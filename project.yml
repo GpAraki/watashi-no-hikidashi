@@ -33,6 +33,9 @@ packages:
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts.git
     from: 2.0.0
+  MCP:
+    url: https://github.com/modelcontextprotocol/swift-sdk.git
+    from: 0.12.1
 
 targets:
   # 本体: メニューバー常駐 + 一覧ウィンドウ
@@ -103,13 +106,15 @@ targets:
         com.apple.security.application-groups:
           - D5F23S696X.dev.araki.hikidashi
 
-  # MCP サーバー (Contents/Helpers)。M4 で modelcontextprotocol/swift-sdk を載せる。
+  # MCP サーバー (Contents/Helpers)。stdio で動く。
   TaskMCP:
     type: tool
     platform: macOS
     sources: [TaskMCP]
     dependencies:
       - package: TaskCore
+      - package: MCP
+        product: MCP
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.araki.hikidashi.mcp

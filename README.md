@@ -19,7 +19,7 @@ macOS のデスクトップウィジェットでタスクを常時表示し、Cl
 │       └── ChangeNotifier/        # Darwin Notification の送受信
 ├── TaskApp/             # 本体: メニューバー常駐(MenuBarExtra)
 ├── TaskWidget/          # Widget Extension(Contents/PlugIns)
-└── TaskMCP/             # MCP サーバー(Contents/Helpers)。現在はスタブ
+└── TaskMCP/             # MCP サーバー(Contents/Helpers、stdio)
 ```
 
 ## 開発
@@ -58,12 +58,46 @@ xcodebuild -project TaskApp.xcodeproj -scheme TaskApp -configuration Debug build
 /usr/bin/log stream --info --predicate 'subsystem == "dev.araki.hikidashi"' --style compact
 ```
 
+## MCP サーバーを Claude につなぐ
+
+MCP サーバーはアプリバンドル内の `Contents/Helpers/TaskMCP` にある。ビルドしたアプリを `/Applications` などパスが変わらない場所に置き、その中の実行ファイルを指定する。
+
+```bash
+# Claude Code
+claude mcp add hikidashi -- /Applications/TaskApp.app/Contents/Helpers/TaskMCP
+```
+
+Claude Desktop は `~/Library/Application Support/Claude/claude_desktop_config.json` に追加する。
+
+```json
+{
+  "mcpServers": {
+    "hikidashi": {
+      "command": "/Applications/TaskApp.app/Contents/Helpers/TaskMCP"
+    }
+  }
+}
+```
+
+接続前に共有 DB へ到達できるかは `TaskMCP --check` で確認できる。
+
+| ツール | 内容 |
+| --- | --- |
+| `list_tasks` | status・プロジェクト・期限・優先度で絞り込んで一覧を返す |
+| `create_task` | タスクを追加する(`created_by = ai`) |
+| `update_task` | タイトル、メモ、優先度、期限などを変更する。null でクリア |
+| `complete_task` | タスクを完了にする |
+| `archive_task` | 論理削除する。物理削除は公開しない |
+| `list_projects` | プロジェクト一覧を返す |
+
+書き込み系のツールは `activity_log` に `actor = ai` で記録し、書き込み後に Darwin Notification を投げる。
+
 ## 開発ステップ
 
 - [x] **M1 土台**: TaskCore パッケージとマイグレーション、App Group と署名
 - [x] **M2 表示**: 本体からタスクを追加し、ウィジェットに表示する
 - [x] **M3 双方向**: ウィジェットからの完了チェックと、Darwin Notification による双方向の反映
-- [ ] **M4 AI 連動**: TaskMCP を modelcontextprotocol/swift-sdk で実装し、Claude Code からタスクを追加・完了できるようにする
+- [x] **M4 AI 連動**: TaskMCP を modelcontextprotocol/swift-sdk で実装し、Claude Code からタスクを追加・完了できるようにする
 - [x] **M5 UX**: メニューバーのクイック入力、グローバルショートカット、activity_log からの取り消し
 
 ## License

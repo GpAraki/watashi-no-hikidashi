@@ -7,7 +7,7 @@ macOS 向け個人用タスク管理アプリ。デスクトップウィジェ�
 - `TaskCore/` — 共有 Swift Package。モデル、GRDB による DB アクセス、マイグレーション、`TaskRepository`、`ChangeNotifier`。本体・ウィジェット・MCP の 3 ターゲットはすべてここ経由で DB を触る。DB コードをターゲット側に書かない。
 - `TaskApp/` — メニューバー常駐の本体(SwiftUI `MenuBarExtra`)。他プロセスからの変更通知を受けて `WidgetCenter.reloadAllTimelines()` を呼ぶ役割も持つ。
 - `TaskWidget/` — WidgetKit 拡張(`AppIntentConfiguration`)。
-- `TaskMCP/` — stdio で動く MCP サーバー。アプリバンドルの `Contents/Helpers/` に同梱。M4 まではスタブ。
+- `TaskMCP/` — stdio で動く MCP サーバー(modelcontextprotocol/swift-sdk)。アプリバンドルの `Contents/Helpers/` に同梱。ツール定義と引数の解釈は `TaskMCP/TaskTools.swift`。stdout は JSON-RPC 専用なので診断出力は stderr に出す。`TaskMCP --check` で共有 DB への到達だけ確認できる。
 - `project.yml` — XcodeGen 定義。`TaskApp.xcodeproj` は生成物で git 管理外。
 
 ## コマンド
@@ -15,6 +15,7 @@ macOS 向け個人用タスク管理アプリ。デスクトップウィジェ�
 ```bash
 xcodegen generate                       # project.yml を変えたら必ず実行
 cd TaskCore && swift test               # TaskCore の単体テスト(XCTest)
+xcodebuild -project TaskApp.xcodeproj -scheme TaskMCP -configuration Debug build   # MCP サーバーだけ
 xcodebuild -project TaskApp.xcodeproj -scheme TaskApp -configuration Debug build
 ```
 
@@ -28,6 +29,7 @@ xcodebuild -project TaskApp.xcodeproj -scheme TaskApp -configuration Debug build
 - **App Group 識別子は Team ID 接頭辞形式**。変更時は `project.yml` と `TaskCore/Sources/TaskCore/AppGroup.swift` を同時に直す。
 - Swift 6 言語モード、strict concurrency = complete。`Sendable` でない Foundation のフォーマッタを static に置かない(`Date.ISO8601FormatStyle` などを使う)。
 - 新しいマイグレーションは `AppDatabase.migrator` に追記する。登録済みのマイグレーションは書き換えない。
+- MCP ツールのエラーは例外を投げずに `isError: true` の結果で返す(モデルが読んで直せるように)。
 
 ## 署名まわりの注意
 
