@@ -46,13 +46,25 @@ xcodebuild -project TaskApp.xcodeproj -scheme TaskApp -configuration Debug build
 - 識別子を変えるときは `project.yml` の entitlements と `TaskCore/Sources/TaskCore/AppGroup.swift` の両方を揃える。
 - DB ファイル: `~/Library/Group Containers/<TeamID>.dev.araki.hikidashi/tasks.sqlite`(WAL モード)。
 
+### ウィジェットの表示範囲
+
+ウィジェットの既定の範囲「今日」は期限が今日までの未完了タスクだけを出す。期限なしのタスク(AI が期限を付けずに作ったものなど)も見たいときは、ウィジェットの編集で範囲を「すべての未完了」にする。行の丸で完了、タイトルで本体の該当タスクを開く。
+
+### 動作確認のログ
+
+本体・ウィジェット・MCP は `subsystem == "dev.araki.hikidashi"` で os_log に出すので、プロセス間の往復は次で追える。
+
+```bash
+/usr/bin/log stream --info --predicate 'subsystem == "dev.araki.hikidashi"' --style compact
+```
+
 ## 開発ステップ
 
 - [x] **M1 土台**: TaskCore パッケージとマイグレーション、App Group と署名
-- [ ] **M2 表示**: 本体からタスクを追加し、ウィジェットに表示する
-- [ ] **M3 双方向**: ウィジェットからの完了チェックと、Darwin Notification による双方向の反映
+- [x] **M2 表示**: 本体からタスクを追加し、ウィジェットに表示する
+- [x] **M3 双方向**: ウィジェットからの完了チェックと、Darwin Notification による双方向の反映
 - [ ] **M4 AI 連動**: TaskMCP を modelcontextprotocol/swift-sdk で実装し、Claude Code からタスクを追加・完了できるようにする
-- [ ] **M5 UX**: メニューバーのクイック入力、グローバルショートカット、activity_log からの取り消し
+- [x] **M5 UX**: メニューバーのクイック入力、グローバルショートカット、activity_log からの取り消し
 
 ## License
 
