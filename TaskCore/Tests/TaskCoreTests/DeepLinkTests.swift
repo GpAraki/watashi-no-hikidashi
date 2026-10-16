@@ -9,6 +9,13 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertEqual(DeepLink(url: url), .task(id: id))
     }
 
+    func testListRoundTrip() throws {
+        XCTAssertEqual(DeepLink.list.url.absoluteString, "hikidashi://tasks")
+        XCTAssertEqual(DeepLink(url: URL(string: "hikidashi://tasks")!), .list)
+        XCTAssertEqual(DeepLink(url: URL(string: "hikidashi://tasks/")!), .list)
+        XCTAssertNil(DeepLink(url: URL(string: "hikidashi://tasks/abc")!))
+    }
+
     func testRejectsOtherForms() throws {
         XCTAssertNil(DeepLink(url: URL(string: "https://task/abc")!))
         XCTAssertNil(DeepLink(url: URL(string: "hikidashi://project/abc")!))

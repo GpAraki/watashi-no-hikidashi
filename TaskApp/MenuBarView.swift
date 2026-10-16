@@ -92,10 +92,12 @@ struct MenuBarView: View {
 
             Divider()
             HStack(spacing: 6) {
+                Button("すべて表示…") { model.showMainWindow() }
+                    .keyboardShortcut("l")
+                Spacer()
                 Text("ショートカット").font(.caption2).foregroundStyle(.secondary)
                 KeyboardShortcuts.Recorder(for: .quickInput)
                     .controlSize(.small)
-                Spacer()
                 Button("終了") { NSApplication.shared.terminate(nil) }
                     .keyboardShortcut("q")
             }

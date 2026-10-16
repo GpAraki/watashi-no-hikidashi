@@ -3,6 +3,7 @@ import Foundation
 import KeyboardShortcuts
 import Observation
 import OSLog
+import ServiceManagement
 import TaskCore
 import WidgetKit
 
@@ -29,6 +30,12 @@ final class AppModel {
     private(set) var lastError: String?
     /// グローバルショートカットから開いたとき、クイック入力にフォーカスを移す合図。
     var quickInputFocusRequest = 0
+    /// メインウィンドウを開く合図。`TaskAppApp` が監視して `openWindow` を呼ぶ。
+    private(set) var mainWindowRequest = 0
+    /// メインウィンドウで選択されているタスク。
+    var mainWindowSelection: String?
+    /// ログイン時起動(SMAppService)の現在の状態。
+    private(set) var launchesAtLogin = SMAppService.mainApp.status == .enabled
     private static let doneLimit = 20
     private static let activityLimit = 15
     /// ディープリンクで開かれたタスク。一覧でハイライトする。
@@ -115,7 +122,65 @@ final class AppModel {
             selectedTaskId = id
             reload()
             showPopover()
+        case .list:
+            showMainWindow()
         }
+    }
+
+    // MARK: メインウィンドウ
+
+    func showMainWindow(selecting taskId: String? = nil) {
+        logger.info("show main window")
+        if let taskId { mainWindowSelection = taskId }
+        reload()
+        mainWindowRequest += 1
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// 一覧ウィンドウ用。アーカイブ済みも含めて全部返す(表示側で絞る)。
+    func allTasks() -> [TaskItem] {
+        guard let repository else { return [] }
+        do {
+            return try repository.tasks(matching: TaskFilter(includeArchived: true))
+        } catch {
+            lastError = error.localizedDescription
+            return []
+        }
+    }
+
+    /// 履歴ウィンドウ用。直近 200 件。
+    func fullActivity() -> [ActivityEntry] {
+        guard let repository else { return [] }
+        return (try? repository.recentActivity(limit: 200)) ?? []
+    }
+
+    func update(_ task: TaskItem, changes: TaskChanges) {
+        perform { try $0.updateTask(id: task.id, changes: changes, actor: .user) }
+    }
+
+    func archive(_ task: TaskItem) {
+        perform { try $0.archiveTask(id: task.id, actor: .user) }
+    }
+
+    func restore(_ task: TaskItem) {
+        perform { try $0.restoreTask(id: task.id, actor: .user) }
+    }
+
+    // MARK: ログイン時起動
+
+    func setLaunchesAtLogin(_ enabled: Bool) {
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+        }
+        launchesAtLogin = SMAppService.mainApp.status == .enabled
+        logger.info("launch at login: \(self.launchesAtLogin)")
     }
 
     func clearSelection() {

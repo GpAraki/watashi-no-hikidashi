@@ -8,16 +8,20 @@ public enum DeepLink: Equatable, Sendable {
 
     /// 該当タスクを本体で選択状態にする。
     case task(id: String)
+    /// 本体のタスク一覧ウィンドウを開く(`hikidashi://tasks`)。
+    case list
 
     public var url: URL {
+        var components = URLComponents()
+        components.scheme = Self.scheme
         switch self {
         case .task(let id):
-            var components = URLComponents()
-            components.scheme = Self.scheme
             components.host = "task"
             components.path = "/" + id
-            return components.url!
+        case .list:
+            components.host = "tasks"
         }
+        return components.url!
     }
 
     /// `hikidashi://task/<id>` の形の URL を解釈する。別スキームや未知の形は nil。
@@ -28,6 +32,8 @@ public enum DeepLink: Equatable, Sendable {
         switch (host, segments.count) {
         case ("task", 1) where !segments[0].isEmpty:
             self = .task(id: segments[0])
+        case ("tasks", 0):
+            self = .list
         default:
             return nil
         }
