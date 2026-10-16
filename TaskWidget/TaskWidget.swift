@@ -1,3 +1,4 @@
+import OSLog
 import SwiftUI
 import TaskCore
 import WidgetKit
@@ -14,7 +15,8 @@ enum WidgetDatabase {
     static let repository: Result<TaskRepository, Error> = {
         do {
             let db = try AppDatabase.open(at: AppGroup.databaseURL())
-            return .success(TaskRepository(database: db))
+            // notifier を渡すことで、ウィジェットからの書き込みが本体に Darwin Notification で伝わる。
+            return .success(TaskRepository(database: db, notifier: ChangeNotifier()))
         } catch {
             return .failure(error)
         }
@@ -33,6 +35,8 @@ struct TaskTimelineProvider: AppIntentTimelineProvider {
 
     func timeline(for configuration: TaskWidgetConfiguration, in context: Context) async -> Timeline<TaskEntry> {
         let entry = load(configuration, in: context)
+        Logger(subsystem: "dev.araki.hikidashi", category: "widget")
+            .info("timeline reloaded: scope=\(configuration.scope.rawValue, privacy: .public) tasks=\(entry.tasks.count) error=\(entry.error ?? "-", privacy: .public)")
         // 本体からの即時更新に加えて、保険として定期的に読み直す。
         let next = Calendar.current.date(byAdding: .minute, value: 15, to: entry.date)!
         return Timeline(entries: [entry], policy: .after(next))
@@ -77,12 +81,7 @@ struct TaskWidgetView: View {
                 Text("タスクはありません").font(.caption).foregroundStyle(.secondary)
             } else {
                 ForEach(entry.tasks) { task in
-                    HStack(spacing: 6) {
-                        Image(systemName: "circle").font(.caption)
-                        Text(task.title).lineLimit(1)
-                        Spacer(minLength: 0)
-                    }
-                    .font(.callout)
+                    TaskWidgetRow(task: task)
                 }
             }
             Spacer(minLength: 0)
@@ -96,6 +95,36 @@ struct TaskWidgetView: View {
         case .all: "未完了"
         case .highPriority: "優先度高"
         }
+    }
+}
+
+/// 1 行。チェックボックスは `CompleteTaskIntent` を実行し、タイトルは本体のディープリンクを開く。
+struct TaskWidgetRow: View {
+    let task: TaskItem
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Toggle(isOn: task.isDone, intent: CompleteTaskIntent(taskId: task.id, markDone: !task.isDone)) {
+                Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+                    .font(.callout)
+                    .foregroundStyle(task.isDone ? Color.accentColor : Color.secondary)
+            }
+            .toggleStyle(.button)
+            .buttonStyle(.plain)
+            .invalidatableContent()
+
+            Link(destination: DeepLink.taskURL(id: task.id)) {
+                HStack(spacing: 0) {
+                    Text(task.title)
+                        .lineLimit(1)
+                        .strikethrough(task.isDone)
+                        .foregroundStyle(task.isDone ? .secondary : .primary)
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+        }
+        .font(.callout)
     }
 }
 

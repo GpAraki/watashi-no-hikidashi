@@ -30,6 +30,9 @@ settings:
 packages:
   TaskCore:
     path: TaskCore
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts.git
+    from: 2.0.0
 
 targets:
   # 本体: メニューバー常駐 + 一覧ウィンドウ
@@ -41,6 +44,7 @@ targets:
         excludes: ["*.entitlements"]
     dependencies:
       - package: TaskCore
+      - package: KeyboardShortcuts
       - target: TaskWidget
       - target: TaskMCP
         embed: true

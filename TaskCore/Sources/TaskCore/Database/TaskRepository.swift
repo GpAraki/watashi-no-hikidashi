@@ -111,16 +111,34 @@ public struct TaskFilter: Sendable {
     }
 }
 
+/// 操作履歴 1 件とその対象タスクのタイトル。一覧表示用。
+public struct ActivityEntry: Identifiable, Hashable, Sendable {
+    public var entry: ActivityLog
+    public var taskTitle: String
+
+    public var id: Int64 { entry.id ?? -1 }
+
+    public init(entry: ActivityLog, taskTitle: String) {
+        self.entry = entry
+        self.taskTitle = taskTitle
+    }
+}
+
 public enum TaskRepositoryError: Error, LocalizedError, Equatable {
     case taskNotFound(String)
     case projectNotFound(String)
     case emptyTitle
+    case activityNotFound(Int64)
+    /// 取り消そうとした操作の差分が壊れていて解釈できない。
+    case activityNotUndoable(Int64)
 
     public var errorDescription: String? {
         switch self {
         case .taskNotFound(let id): return "タスクが見つかりません: \(id)"
         case .projectNotFound(let id): return "プロジェクトが見つかりません: \(id)"
         case .emptyTitle: return "タイトルが空です"
+        case .activityNotFound(let id): return "操作履歴が見つかりません: \(id)"
+        case .activityNotUndoable(let id): return "この操作は取り消せません: \(id)"
         }
     }
 }
@@ -179,6 +197,24 @@ public final class TaskRepository: Sendable {
     public func projects() throws -> [Project] {
         try database.reader.read { db in
             try Project.order(Project.Columns.sortOrder, Project.Columns.name).fetchAll(db)
+        }
+    }
+
+    /// 直近の操作履歴を、対象タスクのタイトル付きで返す(アーカイブ済みタスクの操作も含む)。
+    public func recentActivity(limit: Int = 20) throws -> [ActivityEntry] {
+        try database.reader.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT l.id, l.task_id, l.actor, l.action, l.diff, l.created_at, t.title
+                FROM activity_log l JOIN task t ON t.id = l.task_id
+                ORDER BY l.created_at DESC, l.id DESC
+                LIMIT ?
+                """, arguments: [limit])
+            return try rows.map { row in
+                ActivityEntry(
+                    entry: try ActivityLog(row: row),
+                    taskTitle: row["title"]
+                )
+            }
         }
     }
 
@@ -332,6 +368,118 @@ public final class TaskRepository: Sendable {
             try task.update(db)
             try log(db, task: task.id, actor: actor, action: .restore, diff: diff, at: now)
             return task
+        }
+    }
+
+    // MARK: 取り消し
+
+    /// `activity_log` の 1 件を取り消す。diff の `from` 側の値をタスクに書き戻し、
+    /// その結果を通常の操作(reopen / restore / update など)として新たにログに残す。
+    /// 取り消し自体も履歴に残るので、取り消しの取り消しもできる。
+    ///
+    /// 対象のタスクがその後さらに変更されていても、diff に含まれるフィールドだけを戻す。
+    /// 戻した結果が現在の値と同じなら何もせず、ログも増えない。
+    @discardableResult
+    public func undo(activityId: Int64, actor: ChangeActor) throws -> TaskItem {
+        let now = now()
+        return try write { db in
+            guard let entry = try ActivityLog.fetchOne(db, key: activityId) else {
+                throw TaskRepositoryError.activityNotFound(activityId)
+            }
+            guard let diff = entry.decodedDiff(), !diff.isEmpty else {
+                throw TaskRepositoryError.activityNotUndoable(activityId)
+            }
+            let current = try fetchTask(db, id: entry.taskId)
+            var reverted = current
+            if entry.action == .create {
+                // 作成の取り消しは論理削除。物理削除はしない。
+                guard current.deletedAt == nil else { return current }
+                reverted.deletedAt = now
+            } else {
+                do {
+                    try Self.apply(diff, to: &reverted, side: \.from)
+                } catch {
+                    throw TaskRepositoryError.activityNotUndoable(activityId)
+                }
+            }
+            if let projectId = reverted.projectId, projectId != current.projectId {
+                guard try Project.exists(db, key: projectId) else {
+                    throw TaskRepositoryError.projectNotFound(projectId)
+                }
+            }
+
+            let actual = Self.diff(from: current, to: reverted)
+            guard !actual.isEmpty else { return current }
+
+            reverted.updatedAt = now
+            try reverted.update(db)
+            try log(db, task: reverted.id, actor: actor, action: Self.inverseAction(of: entry.action, resulting: actual), diff: actual, at: now)
+            return reverted
+        }
+    }
+
+    /// diff の片側(`from` か `to`)の値をタスクに適用する。
+    static func apply(_ diff: TaskDiff, to task: inout TaskItem, side: KeyPath<FieldChange, JSONValue>) throws {
+        for (column, change) in diff {
+            let value = change[keyPath: side]
+            switch column {
+            case "title":
+                guard let title = value.stringValue, !title.isEmpty else { throw TaskRepositoryError.emptyTitle }
+                task.title = title
+            case "notes": task.notes = value.stringValue
+            case "project_id": task.projectId = value.stringValue
+            case "status":
+                guard let raw = value.stringValue, let status = TaskStatus(rawValue: raw) else { throw UndoFieldError() }
+                task.status = status
+            case "priority":
+                if case .null = value { task.priority = nil }
+                else {
+                    guard let raw = value.intValue, let priority = TaskPriority(rawValue: raw) else { throw UndoFieldError() }
+                    task.priority = priority
+                }
+            case "due_at": task.dueAt = try value.dateValue()
+            case "completed_at": task.completedAt = try value.dateValue()
+            case "deleted_at": task.deletedAt = try value.dateValue()
+            case "sort_order":
+                guard let order = value.intValue else { throw UndoFieldError() }
+                task.sortOrder = order
+            default:
+                throw UndoFieldError()
+            }
+        }
+    }
+
+    struct UndoFieldError: Error {}
+
+    /// 2 つのタスクの差分(ログに記録する形)。
+    static func diff(from a: TaskItem, to b: TaskItem) -> TaskDiff {
+        var d = TaskDiff()
+        if a.title != b.title { d["title"] = FieldChange(from: .string(a.title), to: .string(b.title)) }
+        if a.notes != b.notes { d["notes"] = FieldChange(from: JSONValue(a.notes), to: JSONValue(b.notes)) }
+        if a.projectId != b.projectId { d["project_id"] = FieldChange(from: JSONValue(a.projectId), to: JSONValue(b.projectId)) }
+        if a.status != b.status { d["status"] = FieldChange(from: JSONValue(a.status), to: JSONValue(b.status)) }
+        if a.priority != b.priority { d["priority"] = FieldChange(from: JSONValue(a.priority), to: JSONValue(b.priority)) }
+        if a.dueAt != b.dueAt { d["due_at"] = FieldChange(from: JSONValue(a.dueAt), to: JSONValue(b.dueAt)) }
+        if a.completedAt != b.completedAt { d["completed_at"] = FieldChange(from: JSONValue(a.completedAt), to: JSONValue(b.completedAt)) }
+        if a.deletedAt != b.deletedAt { d["deleted_at"] = FieldChange(from: JSONValue(a.deletedAt), to: JSONValue(b.deletedAt)) }
+        if a.sortOrder != b.sortOrder { d["sort_order"] = FieldChange(from: .int(a.sortOrder), to: .int(b.sortOrder)) }
+        return d
+    }
+
+    /// 取り消しをどの操作としてログに残すか。
+    static func inverseAction(of action: ActivityAction, resulting diff: TaskDiff) -> ActivityAction {
+        switch action {
+        case .complete: return .reopen
+        case .reopen: return .complete
+        case .archive: return .restore
+        case .restore: return .archive
+        case .create: return .archive
+        case .update:
+            if let status = diff["status"]?.to.stringValue {
+                if status == TaskStatus.done.rawValue { return .complete }
+                if diff["status"]?.from.stringValue == TaskStatus.done.rawValue { return .reopen }
+            }
+            return .update
         }
     }
 

@@ -39,6 +39,34 @@ public enum JSONValue: Codable, Hashable, Sendable {
     init(_ i: Int?) { self = i.map { .int($0) } ?? .null }
     init<R: RawRepresentable>(_ r: R?) where R.RawValue == String { self = r.map { .string($0.rawValue) } ?? .null }
     init<R: RawRepresentable>(_ r: R?) where R.RawValue == Int { self = r.map { .int($0.rawValue) } ?? .null }
+
+    // MARK: 読み出しヘルパ(取り消しで diff を書き戻すときに使う)
+
+    public var stringValue: String? {
+        if case .string(let v) = self { return v }
+        return nil
+    }
+
+    public var intValue: Int? {
+        switch self {
+        case .int(let v): return v
+        case .double(let v) where v.rounded() == v: return Int(v)
+        default: return nil
+        }
+    }
+
+    /// ISO 8601 文字列を Date に戻す。null は nil、解釈できない文字列はエラー。
+    public func dateValue() throws -> Date? {
+        switch self {
+        case .null: return nil
+        case .string(let v):
+            if let d = try? Date(v, strategy: Self.iso8601) { return d }
+            if let d = try? Date(v, strategy: Date.ISO8601FormatStyle()) { return d }
+            throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "not a date: \(v)"))
+        default:
+            throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "not a date"))
+        }
+    }
 }
 
 /// 1 フィールド分の変更前後。
