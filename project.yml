@@ -1,0 +1,146 @@
+# XcodeGen 定義。`xcodegen generate` で TaskApp.xcodeproj を生成する。
+# 署名・App Group の識別子を変えるときは TaskCore/Sources/TaskCore/AppGroup.swift も揃えること。
+name: TaskApp
+
+options:
+  bundleIdPrefix: dev.araki.hikidashi
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  xcodeVersion: "26.0"
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: D5F23S696X
+    # 手元の Developer ID 証明書で手動署名する。App Group は Team ID 接頭辞形式なので
+    # プロビジョニングプロファイルは不要。Xcode の自動署名に戻すときは
+    # CODE_SIGN_STYLE を Automatic にして CODE_SIGN_IDENTITY の行を消す
+    # (Apple Developer で最新の利用規約に同意している必要がある)。
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "Developer ID Application"
+    PROVISIONING_PROFILE_SPECIFIER: ""
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    ENABLE_HARDENED_RUNTIME: YES
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.1.0
+
+packages:
+  TaskCore:
+    path: TaskCore
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts.git
+    from: 2.0.0
+  MCP:
+    url: https://github.com/modelcontextprotocol/swift-sdk.git
+    from: 0.12.1
+
+targets:
+  # 本体: メニューバー常駐 + 一覧ウィンドウ
+  TaskApp:
+    type: application
+    platform: macOS
+    sources:
+      - path: TaskApp
+        excludes: ["*.entitlements"]
+    dependencies:
+      - package: TaskCore
+      - package: KeyboardShortcuts
+      - target: TaskWidget
+      - target: TaskMCP
+        embed: true
+        codeSign: true
+        copy:
+          destination: wrapper
+          subpath: Contents/Helpers
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.araki.hikidashi
+        PRODUCT_NAME: TaskApp
+        CODE_SIGN_ENTITLEMENTS: TaskApp/TaskApp.entitlements
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Shigeru Araki"
+    info:
+      path: TaskApp/Info.plist
+      properties:
+        CFBundleDisplayName: 私の引き出し
+        LSUIElement: true
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        CFBundleURLTypes:
+          - CFBundleURLName: dev.araki.hikidashi
+            CFBundleURLSchemes: [hikidashi]
+    entitlements:
+      path: TaskApp/TaskApp.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups:
+          - D5F23S696X.dev.araki.hikidashi
+
+  # Widget Extension (Contents/PlugIns)
+  TaskWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: TaskWidget
+        excludes: ["*.entitlements"]
+    dependencies:
+      - package: TaskCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.araki.hikidashi.widget
+        PRODUCT_NAME: TaskWidget
+        CODE_SIGN_ENTITLEMENTS: TaskWidget/TaskWidget.entitlements
+        SKIP_INSTALL: YES
+    info:
+      path: TaskWidget/Info.plist
+      properties:
+        CFBundleDisplayName: 私の引き出し
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: TaskWidget/TaskWidget.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups:
+          - D5F23S696X.dev.araki.hikidashi
+
+  # MCP サーバー (Contents/Helpers)。stdio で動く。
+  TaskMCP:
+    type: tool
+    platform: macOS
+    sources: [TaskMCP]
+    dependencies:
+      - package: TaskCore
+      - package: MCP
+        product: MCP
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.araki.hikidashi.mcp
+        PRODUCT_NAME: TaskMCP
+        CODE_SIGN_ENTITLEMENTS: TaskMCP/TaskMCP.entitlements
+        SKIP_INSTALL: YES
+    entitlements:
+      path: TaskMCP/TaskMCP.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - D5F23S696X.dev.araki.hikidashi
+
+schemes:
+  TaskApp:
+    build:
+      targets:
+        TaskApp: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - package: TaskCore/TaskCoreTests
+  TaskMCP:
+    build:
+      targets:
+        TaskMCP: all
+    run:
+      config: Debug
