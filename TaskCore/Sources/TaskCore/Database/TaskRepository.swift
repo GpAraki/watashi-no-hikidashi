@@ -147,6 +147,8 @@ public enum TaskRepositoryError: Error, LocalizedError, Equatable {
     case activityNotUndoable(Int64)
     /// 有期限タスクに期限がない。
     case dueDateRequired
+    case commentNotFound(Int64)
+    case emptyComment
 
     public var errorDescription: String? {
         switch self {
@@ -156,6 +158,8 @@ public enum TaskRepositoryError: Error, LocalizedError, Equatable {
         case .activityNotFound(let id): return "操作履歴が見つかりません: \(id)"
         case .activityNotUndoable(let id): return "この操作は取り消せません: \(id)"
         case .dueDateRequired: return "有期限のタスクには期限が必要です"
+        case .commentNotFound(let id): return "コメントが見つかりません: \(id)"
+        case .emptyComment: return "コメントが空です"
         }
     }
 }
@@ -412,6 +416,66 @@ public final class TaskRepository: Sendable {
         }
     }
 
+    // MARK: コメント
+
+    /// タスクのコメント(削除済みを除く)。古い順。
+    public func comments(taskId: String, includeDeleted: Bool = false) throws -> [Comment] {
+        try database.reader.read { db in
+            var request = Comment.filter(Comment.Columns.taskId == taskId)
+            if !includeDeleted { request = request.filter(Comment.Columns.deletedAt == nil) }
+            return try request.order(Comment.Columns.createdAt, Comment.Columns.id).fetchAll(db)
+        }
+    }
+
+    /// 削除済みを除いたコメント件数を、タスク id ごとに返す(一覧の表示用)。
+    public func commentCounts() throws -> [String: Int] {
+        try database.reader.read { db in
+            let rows = try Row.fetchAll(db, sql: "SELECT task_id, COUNT(*) AS n FROM comment WHERE deleted_at IS NULL GROUP BY task_id")
+            return Dictionary(uniqueKeysWithValues: rows.map { ($0["task_id"] as String, $0["n"] as Int) })
+        }
+    }
+
+    /// コメントを追加する。`activity_log` に action = comment で残る。
+    @discardableResult
+    public func addComment(taskId: String, body: String, actor: ChangeActor) throws -> Comment {
+        let body = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !body.isEmpty else { throw TaskRepositoryError.emptyComment }
+        let now = now()
+        return try write { db in
+            _ = try fetchTask(db, id: taskId)
+            var comment = Comment(taskId: taskId, author: actor, body: body, createdAt: now)
+            try comment.insert(db)
+            try log(db, task: taskId, actor: actor, action: .comment, diff: [
+                "comment_id": FieldChange(from: .null, to: .int(Int(comment.id!))),
+                "comment": FieldChange(from: .null, to: .string(body)),
+            ], at: now)
+            return comment
+        }
+    }
+
+    /// コメントを論理削除する。
+    @discardableResult
+    public func deleteComment(id: Int64, actor: ChangeActor) throws -> Comment {
+        let now = now()
+        return try write { db in try Self.setCommentDeleted(db, id: id, deleted: true, actor: actor, at: now) }
+    }
+
+    private static func setCommentDeleted(_ db: Database, id: Int64, deleted: Bool, actor: ChangeActor, at now: Date) throws -> Comment {
+        guard var comment = try Comment.fetchOne(db, key: id) else { throw TaskRepositoryError.commentNotFound(id) }
+        guard comment.isDeleted != deleted else { return comment }
+        comment.deletedAt = deleted ? now : nil
+        try comment.update(db)
+        let change = deleted
+            ? FieldChange(from: .string(comment.body), to: .null)
+            : FieldChange(from: .null, to: .string(comment.body))
+        var entry = ActivityLog(taskId: comment.taskId, actor: actor, action: deleted ? .deleteComment : .comment, diff: [
+            "comment_id": FieldChange(from: .int(Int(id)), to: .int(Int(id))),
+            "comment": change,
+        ], createdAt: now)
+        try entry.insert(db)
+        return comment
+    }
+
     // MARK: 設定
 
     private static let sprintScheduleKey = "sprint_schedule"
@@ -472,6 +536,14 @@ public final class TaskRepository: Sendable {
             }
             guard let diff = entry.decodedDiff(), !diff.isEmpty else {
                 throw TaskRepositoryError.activityNotUndoable(activityId)
+            }
+            if entry.action == .comment || entry.action == .deleteComment {
+                // コメントの追加は論理削除で、削除は復元で取り消す。
+                guard let commentId = diff["comment_id"]?.to.intValue else {
+                    throw TaskRepositoryError.activityNotUndoable(activityId)
+                }
+                _ = try Self.setCommentDeleted(db, id: Int64(commentId), deleted: entry.action == .comment, actor: actor, at: now)
+                return try fetchTask(db, id: entry.taskId)
             }
             let current = try fetchTask(db, id: entry.taskId)
             var reverted = current
@@ -562,6 +634,8 @@ public final class TaskRepository: Sendable {
         case .archive: return .restore
         case .restore: return .archive
         case .create: return .archive
+        case .comment: return .deleteComment
+        case .deleteComment: return .comment
         case .update:
             if let status = diff["status"]?.to.stringValue {
                 if status == TaskStatus.done.rawValue { return .complete }

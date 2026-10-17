@@ -38,6 +38,8 @@ final class AppModel {
     private(set) var launchesAtLogin = SMAppService.mainApp.status == .enabled
     /// スプリントの区切り方(DB の setting から読む)。
     private(set) var sprintSchedule = SprintSchedule.default()
+    /// タスク id ごとのコメント件数(削除済みを除く)。
+    private(set) var commentCounts: [String: Int] = [:]
     private static let doneLimit = 20
     private static let activityLimit = 15
     /// ディープリンクで開かれたタスク。一覧でハイライトする。
@@ -97,6 +99,7 @@ final class AppModel {
                 .map { $0 }
             recentActivity = try repository.recentActivity(limit: Self.activityLimit)
             sprintSchedule = try repository.sprintSchedule()
+            commentCounts = try repository.commentCounts()
             lastError = nil
         } catch {
             lastError = error.localizedDescription
@@ -244,6 +247,22 @@ final class AppModel {
 
     func add(title: String, type: TaskType = .today) {
         perform { try $0.createTask(NewTask(title: title, type: type), actor: .user) }
+    }
+
+    // MARK: コメント
+
+    func comments(for taskId: String) -> [Comment] {
+        guard let repository else { return [] }
+        return (try? repository.comments(taskId: taskId)) ?? []
+    }
+
+    func addComment(to taskId: String, body: String) {
+        perform { try $0.addComment(taskId: taskId, body: body, actor: .user) }
+    }
+
+    func deleteComment(_ comment: Comment) {
+        guard let id = comment.id else { return }
+        perform { try $0.deleteComment(id: id, actor: .user) }
     }
 
     /// カレンダーから。指定した日時を期限にした有期限タスク。

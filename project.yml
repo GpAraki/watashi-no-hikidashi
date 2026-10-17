@@ -26,6 +26,11 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     CURRENT_PROJECT_VERSION: 1
     MARKETING_VERSION: 0.1.0
+  configs:
+    Release:
+      # 公証に通すため: デバッグ用 entitlement(get-task-allow)を注入せず、署名に Apple のタイムスタンプを付ける。
+      CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+      OTHER_CODE_SIGN_FLAGS: "--timestamp"
 
 packages:
   TaskCore:
@@ -58,7 +63,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.araki.hikidashi
-        PRODUCT_NAME: TaskApp
+        # Finder やログイン項目に出るバンドル名。表示名は Info.plist の CFBundleDisplayName(私の引き出し)。
+        PRODUCT_NAME: Hikidashi
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_ENTITLEMENTS: TaskApp/TaskApp.entitlements
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Shigeru Araki"
@@ -66,6 +73,8 @@ targets:
       path: TaskApp/Info.plist
       properties:
         CFBundleDisplayName: 私の引き出し
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         CFBundleURLTypes:
@@ -97,6 +106,8 @@ targets:
       path: TaskWidget/Info.plist
       properties:
         CFBundleDisplayName: 私の引き出し
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:

@@ -74,3 +74,36 @@ struct TaskTypePicker: View {
         }
     }
 }
+
+extension ChangeActor {
+    var displayName: String {
+        switch self {
+        case .user: "あなた"
+        case .ai: "AI"
+        case .widget: "ウィジェット"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .user: .gray
+        case .ai: .purple
+        case .widget: .blue
+        }
+    }
+}
+
+extension ActivityAction {
+    var displayName: String {
+        switch self {
+        case .create: "追加"
+        case .update: "変更"
+        case .complete: "完了"
+        case .reopen: "再開"
+        case .archive: "アーカイブ"
+        case .restore: "復元"
+        case .comment: "コメント"
+        case .deleteComment: "コメント削除"
+        }
+    }
+}

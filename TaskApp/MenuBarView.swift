@@ -210,30 +210,7 @@ private struct ActivityRow: View {
         .padding(.horizontal, 6)
     }
 
-    private var actorLabel: String {
-        switch activity.entry.actor {
-        case .user: "あなた"
-        case .ai: "AI"
-        case .widget: "ウィジェット"
-        }
-    }
-
-    private var actorColor: Color {
-        switch activity.entry.actor {
-        case .user: .gray
-        case .ai: .purple
-        case .widget: .blue
-        }
-    }
-
-    private var actionLabel: String {
-        switch activity.entry.action {
-        case .create: "追加"
-        case .update: "変更"
-        case .complete: "完了"
-        case .reopen: "再開"
-        case .archive: "アーカイブ"
-        case .restore: "復元"
-        }
-    }
+    private var actorLabel: String { activity.entry.actor.displayName }
+    private var actorColor: Color { activity.entry.actor.color }
+    private var actionLabel: String { activity.entry.action.displayName }
 }
