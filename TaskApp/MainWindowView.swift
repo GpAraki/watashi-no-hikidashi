@@ -167,40 +167,13 @@ struct MainWindowView: View {
             .padding(8)
             List(selection: $model.mainWindowSelection) {
                 ForEach(visibleTasks) { task in
-                    HStack(spacing: 8) {
-                        Button {
-                            model.toggle(task)
-                        } label: {
-                            Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(task.isDone || task.isArchived ? Color.secondary : task.type.color)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(task.isArchived)
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 6) {
-                                Text(task.title)
-                                    .strikethrough(task.isDone)
-                                    .foregroundStyle(task.isArchived ? .tertiary : (task.isDone ? .secondary : .primary))
-                                DueBadge(task: task)
-                            }
-                            HStack(spacing: 6) {
-                                Label(task.type.displayName, systemImage: task.type.systemImage).foregroundStyle(task.type.color)
-                                if let p = task.priority { Text(priorityLabel(p)) }
-                                if let due = task.dueAt, task.type != .today { Text(due, style: .date) }
-                                if task.createdBy == .ai {
-                                    Text("AI").padding(.horizontal, 4).background(.quaternary, in: Capsule())
-                                }
-                                if task.isArchived { Text("アーカイブ済み") }
-                                if let n = model.commentCounts[task.id], n > 0 {
-                                    Label("\(n)", systemImage: "bubble.left").labelStyle(.titleAndIcon)
-                                }
-                                LinksButton(links: model.links(for: task.id), detected: model.detectedURLs(for: task))
-                            }
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                    }
+                    TaskListRow(
+                        task: task,
+                        commentCount: model.commentCounts[task.id] ?? 0,
+                        links: model.links(for: task.id),
+                        detected: model.detectedURLs(for: task),
+                        onToggle: { model.toggle(task) }
+                    )
                     .tag(task.id)
                 }
             }
@@ -663,6 +636,74 @@ struct FlowLayout: Layout {
             view.place(at: CGPoint(x: x, y: y), proposal: .unspecified)
             x += size.width + spacing
             rowHeight = max(rowHeight, size.height)
+        }
+    }
+}
+
+/// 一覧の 1 行。高さを揃えるため 2 行構成を固定する:
+/// 1 行目はタイトルだけ(1 行で省略)、2 行目にタイプ・期限・優先度・バッジ・件数を並べる。
+private struct TaskListRow: View {
+    let task: TaskItem
+    let commentCount: Int
+    let links: [TaskLink]
+    let detected: [URL]
+    let onToggle: () -> Void
+
+    static let height: CGFloat = 44
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Button(action: onToggle) {
+                Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+                    .font(.body)
+                    .foregroundStyle(task.isDone || task.isArchived ? Color.secondary : task.type.color)
+            }
+            .buttonStyle(.plain)
+            .disabled(task.isArchived)
+            .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(task.title)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .strikethrough(task.isDone)
+                    .foregroundStyle(task.isArchived ? .tertiary : (task.isDone ? .secondary : .primary))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                HStack(spacing: 8) {
+                    Label(task.type.displayName, systemImage: task.type.systemImage)
+                        .foregroundStyle(task.type.color)
+                    if let due = task.dueAt, task.type == .deadline || task.type == .sprint {
+                        Text(due, format: Date.FormatStyle().month(.defaultDigits).day())
+                    }
+                    if let p = task.priority { Text(priorityLabel(p)) }
+                    DueBadge(task: task)
+                    if task.createdBy == .ai {
+                        Text("AI").padding(.horizontal, 4).background(.quaternary, in: Capsule())
+                    }
+                    if task.isArchived { Text("アーカイブ済み") }
+                    Spacer(minLength: 0)
+                    if commentCount > 0 {
+                        Label("\(commentCount)", systemImage: "bubble.left").labelStyle(.titleAndIcon)
+                    }
+                    LinksButton(links: links, detected: detected)
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .frame(height: 16)
+            }
+        }
+        .frame(height: Self.height)
+        .contentShape(Rectangle())
+        .tag(task.id)
+    }
+
+    private func priorityLabel(_ p: TaskPriority) -> String {
+        switch p {
+        case .low: "優先度 低"
+        case .medium: "優先度 中"
+        case .high: "優先度 高"
         }
     }
 }

@@ -290,6 +290,42 @@ final class AppModel {
         perform { try $0.deleteComment(id: id, actor: .user) }
     }
 
+    /// 「サービス」から。選択テキストの 1 行目をタイトル、残りを notes にして今日のタスクを作り、
+    /// URL が含まれていればリンクとして付ける。追加後はポップオーバーを開いてそのタスクを選ぶ。
+    @discardableResult
+    func addFromSelection(_ text: String) -> TaskItem? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let urls = URLDetection.urls(in: trimmed)
+        let lines = trimmed.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+
+        var title = lines.first ?? ""
+        var notes = lines.dropFirst().joined(separator: "\n")
+        if let only = urls.first, lines.count == 1, URL(string: title)?.absoluteString == only.absoluteString {
+            // URL だけを選んだとき: タイトルはサービス名、URL はリンクに回す。
+            title = "\(TaskLink.serviceName(for: only)) のリンクを確認する"
+            notes = ""
+        }
+        if title.count > 120 {
+            notes = (String(title) + (notes.isEmpty ? "" : "\n" + notes))
+            title = String(title.prefix(117)) + "…"
+        }
+
+        var created: TaskItem?
+        perform { repo in
+            let task = try repo.createTask(NewTask(title: title, notes: notes.isEmpty ? nil : notes, type: .today), actor: .user)
+            for url in urls.prefix(5) {
+                try repo.addLink(taskId: task.id, url: url.absoluteString, actor: .user)
+            }
+            created = task
+        }
+        if let created {
+            selectedTaskId = created.id
+            reload()
+            showPopover()
+        }
+        return created
+    }
+
     /// カレンダーから。指定した日時を期限にした有期限タスク。
     func addDeadline(title: String, dueAt: Date) {
         perform { try $0.createTask(NewTask(title: title, type: .deadline, dueAt: dueAt), actor: .user) }

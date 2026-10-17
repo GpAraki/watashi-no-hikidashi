@@ -65,6 +65,10 @@ xcodebuild -project TaskApp.xcodeproj -scheme TaskApp -configuration Debug build
 
 編集フォームは自動保存。タイトルとメモは入力が 0.6 秒止まったとき、またはタスクを切り替えたときに保存し、選択項目は変更時に保存する。入力中は「保存待ち…」、書き込みに失敗した場合はエラーと再試行ボタンを表示する。
 
+### どのアプリからでも追加(サービス)
+
+テキストを選択して右クリック →「サービス」→「引き出しにタスクを追加」で、選択した内容を今日のタスクにする(1 行目がタイトル、残りがメモ、含まれる URL はリンク)。追加後はポップオーバーが開いてそのタスクが選ばれるので、タイプや期限はそこで変えられる。定義は `project.yml` の `NSServices`、受け口は `TaskApp/ServicesProvider.swift`。メニューに出ないときは一度アプリを起動してから `/System/Library/CoreServices/pbs -update` を実行する。ショートカットはシステム設定 → キーボード → キーボードショートカット → サービスで割り当てられる。
+
 ### ウィジェット
 
 small は今日の進捗と次のタスク、medium は今日と近い期限の未完了を合計 3 件まで、large は全セクションの未完了を合計 7 件まで表示する。完了済みは進捗の数字に集約し、収まらないタスクは「ほか n 件を表示」から本体の一覧を開ける。small でも期限ありのタスクには期限を表示する。ウィジェットの編集で「期限あり」「スプリント」「いつかの件数」の表示を切り替えられる。行の丸で完了、タイトルで本体の該当タスクを開く。
@@ -145,7 +149,12 @@ xcrun stapler staple "$APP"
 ditto -c -k --keepParent "$APP" build/dist/Hikidashi-$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist").zip
 ```
 
-受け取った側は zip を展開して `Hikidashi.app` を `/Applications` に置き、一度起動する。ウィジェットはデスクトップの右クリック →「ウィジェットを編集」から追加する。MCP の接続先は `/Applications/Hikidashi.app/Contents/Helpers/TaskMCP`。公証が Invalid になったときは `xcrun notarytool log <id> --keychain-profile hikidashi-notary` で理由が読める。
+受け取った側は zip を展開して `Hikidashi.app` を `/Applications` に置き、一度起動する。アプリの置き場所を変えたり別のビルドに入れ替えたりしたあとでウィジェットが空のままになるときは、ウィジェットのデーモンに古い情報が残っている。次で復帰する(ウィジェットはすぐ描き直される)。
+
+```bash
+pluginkit -a /Applications/Hikidashi.app/Contents/PlugIns/TaskWidget.appex && killall chronod
+```
+ウィジェットはデスクトップの右クリック →「ウィジェットを編集」から追加する。MCP の接続先は `/Applications/Hikidashi.app/Contents/Helpers/TaskMCP`。公証が Invalid になったときは `xcrun notarytool log <id> --keychain-profile hikidashi-notary` で理由が読める。
 
 ## 開発ステップ
 

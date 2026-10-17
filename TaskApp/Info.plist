@@ -35,5 +35,37 @@
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>引き出しにタスクを追加</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>addTaskFromSelection</string>
+			<key>NSPortName</key>
+			<string>Hikidashi</string>
+			<key>NSRequiredContext</key>
+			<dict>
+				<key>NSTextContent</key>
+				<array>
+					<string>URL</string>
+					<string>Email</string>
+					<string>FilePath</string>
+					<string>Address</string>
+					<string>Date</string>
+					<string>Plain</string>
+				</array>
+			</dict>
+			<key>NSSendTypes</key>
+			<array>
+				<string>public.utf8-plain-text</string>
+				<string>public.url</string>
+				<string>NSStringPboardType</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
