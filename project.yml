@@ -80,6 +80,16 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: dev.araki.hikidashi
             CFBundleURLSchemes: [hikidashi]
+        # どのアプリでも「選択 → 右クリック → サービス」からタスクを追加できるようにする。
+        # 受け口は TaskApp/ServicesProvider.swift の addTaskFromSelection。NSPortName はアプリ名(PRODUCT_NAME)。
+        NSServices:
+          - NSMenuItem:
+              default: 引き出しにタスクを追加
+            NSMessage: addTaskFromSelection
+            NSPortName: Hikidashi
+            NSSendTypes: [public.utf8-plain-text, public.url, NSStringPboardType]
+            NSRequiredContext:
+              NSTextContent: [URL, Email, FilePath, Address, Date, Plain]
     entitlements:
       path: TaskApp/TaskApp.entitlements
       properties:
