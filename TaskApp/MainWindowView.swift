@@ -144,6 +144,9 @@ struct MainWindowView: View {
                                     Text("AI").padding(.horizontal, 4).background(.quaternary, in: Capsule())
                                 }
                                 if task.isArchived { Text("アーカイブ済み") }
+                                if let n = model.commentCounts[task.id], n > 0 {
+                                    Label("\(n)", systemImage: "bubble.left").labelStyle(.titleAndIcon)
+                                }
                             }
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -213,32 +216,11 @@ struct MainWindowView: View {
         }
     }
 
-    private func actorLabel(_ a: ChangeActor) -> String {
-        switch a {
-        case .user: "あなた"
-        case .ai: "AI"
-        case .widget: "ウィジェット"
-        }
-    }
+    private func actorLabel(_ a: ChangeActor) -> String { a.displayName }
 
-    private func actorColor(_ a: ChangeActor) -> Color {
-        switch a {
-        case .user: .gray
-        case .ai: .purple
-        case .widget: .blue
-        }
-    }
+    private func actorColor(_ a: ChangeActor) -> Color { a.color }
 
-    private func actionLabel(_ a: ActivityAction) -> String {
-        switch a {
-        case .create: "追加"
-        case .update: "変更"
-        case .complete: "完了"
-        case .reopen: "再開"
-        case .archive: "アーカイブ"
-        case .restore: "復元"
-        }
-    }
+    private func actionLabel(_ a: ActivityAction) -> String { a.displayName }
 
     /// diff を「title: 初稿 → 改稿」のような 1 行にまとめる。
     private func diffSummary(_ entry: ActivityLog) -> String {
@@ -336,6 +318,10 @@ private struct TaskEditor: View {
                     .disabled(notes == (task.notes ?? ""))
             }
             .padding(.top, 4)
+
+            Section("コメント") {
+                CommentsSection(task: task, model: model)
+            }
         }
         .formStyle(.grouped)
         .onAppear { load() }
@@ -398,5 +384,61 @@ private struct SprintSettingsMenu: View {
         let interval = model.sprintSchedule.interval(containing: .now)
         let f = Date.FormatStyle().month(.defaultDigits).day().weekday(.abbreviated)
         return "今のスプリント: \(interval.start.formatted(f)) 〜 \(interval.end.addingTimeInterval(-1).formatted(f))"
+    }
+}
+
+/// タスクのコメントのスレッド。人も AI も書き、どちらのコメントも削除(論理削除、取り消し可)できる。
+private struct CommentsSection: View {
+    let task: TaskItem
+    @Bindable var model: AppModel
+    @State private var draft = ""
+    @FocusState private var focused: Bool
+
+    private var comments: [Comment] { model.comments(for: task.id) }
+
+    var body: some View {
+        if comments.isEmpty {
+            Text("まだコメントはありません").font(.caption).foregroundStyle(.secondary)
+        }
+        ForEach(comments) { comment in
+            HStack(alignment: .top, spacing: 8) {
+                Text(comment.author.displayName)
+                    .font(.caption2)
+                    .padding(.horizontal, 5).padding(.vertical, 1)
+                    .background(comment.author.color.opacity(0.2), in: Capsule())
+                    .frame(width: 72, alignment: .leading)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(comment.body).textSelection(.enabled)
+                    Text(comment.createdAt, format: .dateTime.month().day().hour().minute())
+                        .font(.caption2).foregroundStyle(.tertiary)
+                }
+                Spacer()
+                Button {
+                    model.deleteComment(comment)
+                } label: {
+                    Image(systemName: "trash").font(.caption)
+                }
+                .buttonStyle(.borderless)
+                .help("コメントを削除(操作履歴から元に戻せます)")
+            }
+            .padding(.vertical, 2)
+        }
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            TextField("状況をコメント… (⌘↩ で送信)", text: $draft, axis: .vertical)
+                .lineLimit(1...4)
+                .focused($focused)
+                .onSubmit(submit)
+            Button("送信", action: submit)
+                .keyboardShortcut(.return, modifiers: .command)
+                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+    }
+
+    private func submit() {
+        let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !body.isEmpty else { return }
+        model.addComment(to: task.id, body: body)
+        draft = ""
+        focused = true
     }
 }

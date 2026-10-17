@@ -101,9 +101,15 @@ Claude Desktop は `~/Library/Application Support/Claude/claude_desktop_config.j
 | `update_task` | タイトル、メモ、優先度、期限などを変更する。null でクリア |
 | `complete_task` | タスクを完了にする |
 | `archive_task` | 論理削除する。物理削除は公開しない |
+| `add_comment` | タスクにコメントを追加する(author = ai)。進捗や保留の理由などの状況を残す |
+| `list_comments` | タスクのコメントを古い順に返す |
 | `list_projects` | プロジェクト一覧を返す |
 
 書き込み系のツールは `activity_log` に `actor = ai` で記録し、書き込み後に Darwin Notification を投げる。
+
+### コメント
+
+タスクには人も AI もコメントを付けられる(`comment` テーブル、author = user / ai / widget)。一覧ウィンドウの編集フォームにスレッドと入力欄があり、AI が書いた状況報告をそこで読める。コメントの追加・削除も `activity_log` に残り、「最近の操作」や操作履歴から取り消せる(追加の取り消しは論理削除、削除の取り消しは復元)。
 
 ## 配布用ビルド(社内共有)
 

@@ -15,6 +15,7 @@ struct TaskTools: Sendable {
         - priority は 1(低)〜3(高)の整数。
         - 日時は ISO 8601(例: 2026-10-18T15:00:00+09:00)。日付だけ(2026-10-18)を渡すとその日の 0 時として扱います。
         - 削除は archive_task による論理削除のみです。
+        - add_comment でタスクに状況や判断理由を書き残せます。進捗を伝えたいとき、保留にした理由、次にやることなどはコメントに書いてください(タイトルやメモの上書きではなく)。
         - AI が行った変更はすべて履歴に残り、ユーザーが取り消せます。
         """
 
@@ -133,6 +134,28 @@ struct TaskTools: Sendable {
             annotations: Tool.Annotations(destructiveHint: true, idempotentHint: true)
         ),
         Tool(
+            name: "add_comment",
+            description: "タスクにコメントを追加する(author = ai)。進捗、保留の理由、次の一手などの状況を書く。ユーザーはアプリで読んで返信・取り消しができる。",
+            inputSchema: .object([
+                "type": "object",
+                "properties": .object([
+                    "id": idSchema,
+                    "body": .object(["type": "string", "description": "コメント本文"]),
+                ]),
+                "required": .array(["id", "body"]),
+            ])
+        ),
+        Tool(
+            name: "list_comments",
+            description: "タスクのコメントを古い順に返す。人(user)・AI(ai)・ウィジェット(widget)のどれが書いたかが author に入る。",
+            inputSchema: .object([
+                "type": "object",
+                "properties": .object(["id": idSchema]),
+                "required": .array(["id"]),
+            ]),
+            annotations: Tool.Annotations(readOnlyHint: true)
+        ),
+        Tool(
             name: "list_projects",
             description: "プロジェクトの一覧を返す。",
             inputSchema: .object(["type": "object", "properties": .object([:])]),
@@ -192,6 +215,15 @@ struct TaskTools: Sendable {
             case "archive_task":
                 let id = try args.required("id", args.string)
                 return try result(try repository.archiveTask(id: id, actor: .ai))
+
+            case "add_comment":
+                let id = try args.required("id", args.string)
+                let body = try args.required("body", args.string)
+                return try result(try repository.addComment(taskId: id, body: body, actor: .ai))
+
+            case "list_comments":
+                let id = try args.required("id", args.string)
+                return try result(try repository.comments(taskId: id))
 
             case "list_projects":
                 return try result(try repository.projects())

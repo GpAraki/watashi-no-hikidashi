@@ -78,4 +78,8 @@ public enum ActivityAction: String, Codable, Sendable, DatabaseValueConvertible 
     case reopen
     case archive
     case restore
+    /// コメントの追加。diff は comment_id と comment(本文)。
+    case comment
+    /// コメントの論理削除。
+    case deleteComment = "delete_comment"
 }

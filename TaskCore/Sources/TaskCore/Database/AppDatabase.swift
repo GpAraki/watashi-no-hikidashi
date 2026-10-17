@@ -105,6 +105,21 @@ public struct AppDatabase: Sendable {
             }
         }
 
+        // タスクへのコメント。
+        migrator.registerMigration("v3_comment") { db in
+            try db.create(table: "comment") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("task_id", .text).notNull()
+                    .references("task", onDelete: .cascade)
+                t.column("author", .text).notNull()
+                    .check { ["user", "ai", "widget"].contains($0) }
+                t.column("body", .text).notNull()
+                t.column("created_at", .datetime).notNull()
+                t.column("deleted_at", .datetime)
+            }
+            try db.create(index: "comment_task", on: "comment", columns: ["task_id"])
+        }
+
         return migrator
     }
 }
