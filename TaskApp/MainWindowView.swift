@@ -7,10 +7,16 @@ struct MainWindowView: View {
     static let windowID = "main"
 
     @Bindable var model: AppModel
+    @State private var viewMode: ViewMode = .list
     @State private var scope: Scope = .open
     @State private var aiOnly = false
     @State private var tasks: [TaskItem] = []
     @State private var activity: [ActivityEntry] = []
+
+    enum ViewMode: String, CaseIterable, Identifiable {
+        case list, calendar
+        var id: String { rawValue }
+    }
 
     enum Scope: String, CaseIterable, Identifiable {
         case open, done, archived, all
@@ -35,8 +41,13 @@ struct MainWindowView: View {
 
     var body: some View {
         HSplitView {
-            taskList
-                .frame(minWidth: 260, idealWidth: 320)
+            Group {
+                switch viewMode {
+                case .list: taskList
+                case .calendar: CalendarPane(model: model, tasks: tasks.filter { !$0.isArchived })
+                }
+            }
+            .frame(minWidth: viewMode == .calendar ? 340 : 260, idealWidth: viewMode == .calendar ? 380 : 320)
             VStack(spacing: 0) {
                 if let task = selectedTask {
                     TaskEditor(task: task, model: model)
@@ -51,8 +62,17 @@ struct MainWindowView: View {
             }
             .frame(minWidth: 360)
         }
-        .frame(minWidth: 640, minHeight: 420)
+        .frame(minWidth: 700, minHeight: 480)
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Picker("表示", selection: $viewMode) {
+                    Label("一覧", systemImage: "list.bullet").tag(ViewMode.list)
+                    Label("カレンダー", systemImage: "calendar").tag(ViewMode.calendar)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .help("一覧とカレンダーを切り替える")
+            }
             ToolbarItem(placement: .automatic) {
                 SprintSettingsMenu(model: model)
             }

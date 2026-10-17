@@ -246,6 +246,11 @@ final class AppModel {
         perform { try $0.createTask(NewTask(title: title, type: type), actor: .user) }
     }
 
+    /// カレンダーから。指定した日時を期限にした有期限タスク。
+    func addDeadline(title: String, dueAt: Date) {
+        perform { try $0.createTask(NewTask(title: title, type: .deadline, dueAt: dueAt), actor: .user) }
+    }
+
     /// 未完了タスクをタイプ別に、表示順(今日 → 期限あり → スプリント → いつか)で返す。
     var tasksByType: [(type: TaskType, tasks: [TaskItem])] {
         TaskType.displayOrder.compactMap { type in
