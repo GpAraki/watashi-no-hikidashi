@@ -6,6 +6,7 @@ struct MenuBarView: View {
     @Bindable var model: AppModel
     @State private var draft = ""
     @State private var draftType: TaskType = .today
+    @State private var draftDue = Calendar.current.date(bySettingHour: 18, minute: 0, second: 0, of: .now) ?? .now
     @State private var showDone = false
     @State private var showActivity = false
     @FocusState private var quickInputFocused: Bool
@@ -31,14 +32,19 @@ struct MenuBarView: View {
                         .onSubmit {
                             let title = draft.trimmingCharacters(in: .whitespaces)
                             guard !title.isEmpty else { return }
-                            model.add(title: title, type: draftType)
-                            draft = ""
+                            if model.add(title: title, type: draftType, dueAt: draftType == .deadline ? draftDue : nil) != nil {
+                                draft = ""
+                            }
                         }
                     TaskTypePicker(type: $draftType)
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .frame(width: 118)
-                        .help("追加するタスクのタイプ。期限ありは追加後に一覧ウィンドウで日付を付けます")
+                        .help("追加するタスクのタイプ")
+                }
+                if draftType == .deadline {
+                    DatePicker("期限", selection: $draftDue, displayedComponents: [.date, .hourAndMinute])
+                        .controlSize(.small)
                 }
 
                 // ディープリンクで開かれたタスクが未完了一覧に無いとき(完了済みなど)は、その 1 件を上に出す。

@@ -191,6 +191,7 @@ struct TaskWidgetView: View {
             }
         }
         .containerBackground(.fill.tertiary, for: .widget)
+        .widgetURL(DeepLink.list.url)
     }
 
     // MARK: small: 今日の進捗だけ
@@ -219,50 +220,78 @@ struct TaskWidgetView: View {
         }
     }
 
-    // MARK: medium: 今日 + 近い期限
+    // MARK: medium: 未完了を合計 3 行まで
+
+    private var openToday: [TaskItem] { entry.today.filter { !$0.isDone } }
+    private var visibleDeadlines: [TaskItem] { entry.configuration.showDeadline ? entry.deadlines : [] }
+    private var visibleSprint: [TaskItem] { entry.configuration.showSprint ? entry.sprint : [] }
 
     private var medium: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            todaySection(limit: 3)
-            if entry.configuration.showDeadline, !entry.deadlines.isEmpty {
-                Divider()
-                ForEach(entry.deadlines.prefix(2)) { task in
+        let todayLimit = min(openToday.count, visibleDeadlines.isEmpty ? 3 : 2)
+        let deadlineLimit = min(visibleDeadlines.count, 3 - todayLimit)
+        return VStack(alignment: .leading, spacing: 6) {
+            todaySection(limit: todayLimit)
+            if deadlineLimit > 0 {
+                sectionHeader("期限あり", trailing: "\(visibleDeadlines.count) 件")
+                ForEach(visibleDeadlines.prefix(deadlineLimit)) { task in
                     TaskWidgetRow(task: task, now: entry.date, link: entry.firstLinks[task.id])
                 }
             }
             Spacer(minLength: 0)
+            remainingLink(openToday.count + visibleDeadlines.count - todayLimit - deadlineLimit)
         }
     }
 
-    // MARK: large: 全セクション
+    // MARK: large: セクション間で空き枠を融通し、未完了を合計 7 行まで
 
     private var large: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            todaySection(limit: 4)
+        let limits = largeLimits
+        return VStack(alignment: .leading, spacing: 6) {
+            todaySection(limit: limits.today)
             if entry.configuration.showDeadline {
-                sectionHeader("期限あり", trailing: entry.deadlines.isEmpty ? "なし" : nil)
-                ForEach(entry.deadlines.prefix(3)) { task in
+                sectionHeader("期限あり", trailing: visibleDeadlines.isEmpty ? "なし" : "\(visibleDeadlines.count) 件")
+                ForEach(visibleDeadlines.prefix(limits.deadline)) { task in
                     TaskWidgetRow(task: task, now: entry.date, link: entry.firstLinks[task.id])
                 }
-                overflow(entry.deadlines.count - 3)
             }
             if entry.configuration.showSprint {
-                sectionHeader("スプリント", trailing: sprintSummary)
+                sectionHeader("スプリント", trailing: "残り \(sprintDaysLeft) 日")
+                HStack {
+                    Text(sprintPeriod)
+                    Spacer()
+                    Text("\(entry.sprintDoneCount) / \(entry.sprintTotalCount) 完了")
+                }
+                .font(.caption2).foregroundStyle(.secondary)
                 ProgressBar(value: progress(done: entry.sprintDoneCount, total: entry.sprintTotalCount), color: TaskType.sprint.color)
-                ForEach(entry.sprint.prefix(3)) { task in
+                ForEach(visibleSprint.prefix(limits.sprint)) { task in
                     TaskWidgetRow(task: task, now: entry.date, link: entry.firstLinks[task.id])
                 }
-                overflow(entry.sprint.count - 3)
             }
             Spacer(minLength: 0)
-            if entry.configuration.showOpenEnded {
-                HStack {
-                    Text("いつか").font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    Text("\(entry.openEndedCount) 件").font(.caption).foregroundStyle(.tertiary)
+            HStack {
+                remainingLink(openToday.count + visibleDeadlines.count + visibleSprint.count - limits.today - limits.deadline - limits.sprint)
+                Spacer(minLength: 0)
+                if entry.configuration.showOpenEnded {
+                    Link("いつか \(entry.openEndedCount) 件", destination: DeepLink.list.url)
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
             }
         }
+    }
+
+    private var largeLimits: (today: Int, deadline: Int, sprint: Int) {
+        var today = min(openToday.count, 3)
+        var deadline = min(visibleDeadlines.count, 2)
+        var sprint = min(visibleSprint.count, 2)
+        var spare = 7 - today - deadline - sprint
+        let moreToday = min(spare, openToday.count - today)
+        today += moreToday
+        spare -= moreToday
+        let moreDeadline = min(spare, visibleDeadlines.count - deadline)
+        deadline += moreDeadline
+        spare -= moreDeadline
+        sprint += min(spare, visibleSprint.count - sprint)
+        return (today, deadline, sprint)
     }
 
     // MARK: 部品
@@ -272,16 +301,16 @@ struct TaskWidgetView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("今日").font(.headline)
                 Spacer()
-                Text("\(entry.todayDoneCount) / \(entry.today.count)").font(.caption).foregroundStyle(.secondary)
+                Text("\(entry.todayDoneCount) / \(entry.today.count) 完了").font(.caption).foregroundStyle(.secondary)
             }
             ProgressBar(value: progress(done: entry.todayDoneCount, total: entry.today.count), color: TaskType.today.color)
-            if entry.today.isEmpty {
-                Text("当日タスクはありません").font(.caption).foregroundStyle(.secondary)
+            if openToday.isEmpty {
+                Text(entry.today.isEmpty ? "今日のタスクはありません" : "今日は全部終わりました")
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            ForEach(entry.today.prefix(limit)) { task in
+            ForEach(openToday.prefix(limit)) { task in
                 TaskWidgetRow(task: task, now: entry.date, link: entry.firstLinks[task.id])
             }
-            overflow(entry.today.count - limit)
         }
     }
 
@@ -296,17 +325,20 @@ struct TaskWidgetView: View {
         .padding(.top, 4)
     }
 
-    private var sprintSummary: String {
+    private var sprintPeriod: String {
         let f = Date.FormatStyle().month(.defaultDigits).day()
         let end = entry.sprintInterval.end.addingTimeInterval(-1)
-        let daysLeft = max(0, Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: entry.date), to: entry.sprintInterval.end).day ?? 0)
-        return "\(entry.sprintInterval.start.formatted(f))〜\(end.formatted(f)) ・ 残り \(daysLeft) 日 ・ \(entry.sprintDoneCount) / \(entry.sprintTotalCount)"
+        return "\(entry.sprintInterval.start.formatted(f))〜\(end.formatted(f))"
     }
 
-    @ViewBuilder
-    private func overflow(_ count: Int) -> some View {
-        if count > 0 {
-            Text("ほか \(count) 件").font(.caption2).foregroundStyle(.tertiary).padding(.leading, 24)
+    private var sprintDaysLeft: Int {
+        max(0, Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: entry.date), to: entry.sprintInterval.end).day ?? 0)
+    }
+
+    private func remainingLink(_ count: Int) -> some View {
+        Link(destination: DeepLink.list.url) {
+            Text(count > 0 ? "ほか \(count) 件を表示 ›" : "すべて表示 ›")
+                .font(.caption2).foregroundStyle(.secondary)
         }
     }
 
@@ -351,13 +383,11 @@ struct TaskWidgetRow: View {
             Link(destination: DeepLink.taskURL(id: task.id)) {
                 HStack(spacing: 6) {
                     Text(task.title)
-                        .lineLimit(1)
+                        .lineLimit(compact ? 2 : 1)
                         .strikethrough(task.isDone)
                         .foregroundStyle(task.isDone ? .secondary : .primary)
                     Spacer(minLength: 0)
-                    if !compact || task.isOverdue(now: now) {
-                        badge
-                    }
+                    badge.fixedSize(horizontal: true, vertical: false)
                 }
                 .contentShape(Rectangle())
             }
@@ -387,7 +417,12 @@ struct TaskWidgetRow: View {
                 } else {
                     let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: dueAt)).day ?? 0
                     if days <= 7 {
-                        Pill(text: "あと \(days) 日", color: .orange)
+                        if compact {
+                            Text(dueAt, format: Date.FormatStyle().month(.defaultDigits).day())
+                                .font(.caption2).foregroundStyle(.secondary)
+                        } else {
+                            Pill(text: days == 1 ? "明日" : "あと \(days) 日", color: .orange)
+                        }
                     } else {
                         Text(dueAt, format: Date.FormatStyle().month(.defaultDigits).day())
                             .font(.caption2).foregroundStyle(.secondary)
