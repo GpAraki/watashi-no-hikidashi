@@ -40,6 +40,8 @@ final class AppModel {
     private(set) var sprintSchedule = SprintSchedule.default()
     /// タスク id ごとのコメント件数(削除済みを除く)。
     private(set) var commentCounts: [String: Int] = [:]
+    /// タスク id ごとのリンク(削除済みを除く)。
+    private(set) var linksByTask: [String: [TaskLink]] = [:]
     private static let doneLimit = 20
     private static let activityLimit = 15
     /// ディープリンクで開かれたタスク。一覧でハイライトする。
@@ -100,6 +102,7 @@ final class AppModel {
             recentActivity = try repository.recentActivity(limit: Self.activityLimit)
             sprintSchedule = try repository.sprintSchedule()
             commentCounts = try repository.commentCounts()
+            linksByTask = try repository.linksByTask()
             lastError = nil
         } catch {
             lastError = error.localizedDescription
@@ -247,6 +250,25 @@ final class AppModel {
 
     func add(title: String, type: TaskType = .today) {
         perform { try $0.createTask(NewTask(title: title, type: type), actor: .user) }
+    }
+
+    // MARK: リンク
+
+    func links(for taskId: String) -> [TaskLink] { linksByTask[taskId] ?? [] }
+
+    /// notes に書かれていて、まだリンクとして登録されていない URL。
+    func detectedURLs(for task: TaskItem) -> [URL] {
+        let registered = Set(links(for: task.id).map(\.url))
+        return URLDetection.urls(in: task.notes).filter { !registered.contains($0) }
+    }
+
+    func addLink(to taskId: String, url: String, label: String? = nil) {
+        perform { try $0.addLink(taskId: taskId, url: url, label: label, actor: .user) }
+    }
+
+    func removeLink(_ link: TaskLink) {
+        guard let id = link.id else { return }
+        perform { try $0.removeLink(id: id, actor: .user) }
     }
 
     // MARK: コメント

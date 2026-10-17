@@ -68,7 +68,8 @@ struct MenuBarView: View {
                                     .foregroundStyle(section.type.color)
                                     .padding(.top, 4)
                                     ForEach(section.tasks) { task in
-                                        TaskRow(task: task, isSelected: task.id == model.selectedTaskId) { model.toggle(task) }
+                                        TaskRow(task: task, isSelected: task.id == model.selectedTaskId,
+                                                links: model.links(for: task.id), detected: model.detectedURLs(for: task)) { model.toggle(task) }
                                             .id(task.id)
                                     }
                                 }
@@ -150,6 +151,8 @@ struct MenuBarView: View {
 private struct TaskRow: View {
     let task: TaskItem
     var isSelected = false
+    var links: [TaskLink] = []
+    var detected: [URL] = []
     let onToggle: () -> Void
 
     var body: some View {
@@ -169,6 +172,7 @@ private struct TaskRow: View {
                 }
             }
             Spacer()
+            LinksButton(links: links, detected: detected)
             DueBadge(task: task)
         }
         .padding(.vertical, 4)
