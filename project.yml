@@ -63,7 +63,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.araki.hikidashi
-        PRODUCT_NAME: TaskApp
+        # Finder やログイン項目に出るバンドル名。表示名は Info.plist の CFBundleDisplayName(私の引き出し)。
+        PRODUCT_NAME: Hikidashi
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_ENTITLEMENTS: TaskApp/TaskApp.entitlements
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Shigeru Araki"

@@ -77,7 +77,7 @@ MCP サーバーはアプリバンドル内の `Contents/Helpers/TaskMCP` にあ
 
 ```bash
 # Claude Code
-claude mcp add hikidashi -- /Applications/TaskApp.app/Contents/Helpers/TaskMCP
+claude mcp add hikidashi -- /Applications/Hikidashi.app/Contents/Helpers/TaskMCP
 ```
 
 Claude Desktop は `~/Library/Application Support/Claude/claude_desktop_config.json` に追加する。
@@ -86,7 +86,7 @@ Claude Desktop は `~/Library/Application Support/Claude/claude_desktop_config.j
 {
   "mcpServers": {
     "hikidashi": {
-      "command": "/Applications/TaskApp.app/Contents/Helpers/TaskMCP"
+      "command": "/Applications/Hikidashi.app/Contents/Helpers/TaskMCP"
     }
   }
 }
@@ -111,6 +111,14 @@ Claude Desktop は `~/Library/Application Support/Claude/claude_desktop_config.j
 
 タスクには人も AI もコメントを付けられる(`comment` テーブル、author = user / ai / widget)。一覧ウィンドウの編集フォームにスレッドと入力欄があり、AI が書いた状況報告をそこで読める。コメントの追加・削除も `activity_log` に残り、「最近の操作」や操作履歴から取り消せる(追加の取り消しは論理削除、削除の取り消しは復元)。
 
+## 名前とアイコン
+
+バンドル名は `Hikidashi.app`(`project.yml` の `PRODUCT_NAME`)、表示名は「私の引き出し」(`CFBundleDisplayName`)。アプリアイコンは `scripts/make-app-icon.swift` で描いて `TaskApp/Assets.xcassets/AppIcon.appiconset` に出力している。色や形を変えるときはスクリプトを直して再実行する。
+
+```bash
+swift scripts/make-app-icon.swift TaskApp/Assets.xcassets/AppIcon.appiconset
+```
+
 ## 配布用ビルド(社内共有)
 
 Developer ID で署名し、Apple の公証を通した zip を配る。Release 構成では `project.yml` で `get-task-allow` の注入を切り、署名にタイムスタンプを付けている(公証の必須条件)。公証の資格情報は `xcrun notarytool store-credentials hikidashi-notary` でキーチェーンに保存しておく。
@@ -118,14 +126,14 @@ Developer ID で署名し、Apple の公証を通した zip を配る。Release 
 ```bash
 xcodegen generate
 xcodebuild -project TaskApp.xcodeproj -scheme TaskApp -configuration Release -derivedDataPath build/Release build
-APP=build/Release/Build/Products/Release/TaskApp.app
-ditto -c -k --keepParent "$APP" build/dist/TaskApp-notarize.zip
-xcrun notarytool submit build/dist/TaskApp-notarize.zip --keychain-profile hikidashi-notary --wait
+APP=build/Release/Build/Products/Release/Hikidashi.app
+ditto -c -k --keepParent "$APP" build/dist/Hikidashi-notarize.zip
+xcrun notarytool submit build/dist/Hikidashi-notarize.zip --keychain-profile hikidashi-notary --wait
 xcrun stapler staple "$APP"
-ditto -c -k --keepParent "$APP" build/dist/TaskApp-$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist").zip
+ditto -c -k --keepParent "$APP" build/dist/Hikidashi-$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist").zip
 ```
 
-受け取った側は zip を展開して `TaskApp.app` を `/Applications` に置き、一度起動する。ウィジェットはデスクトップの右クリック →「ウィジェットを編集」から追加する。MCP の接続先は `/Applications/TaskApp.app/Contents/Helpers/TaskMCP`。公証が Invalid になったときは `xcrun notarytool log <id> --keychain-profile hikidashi-notary` で理由が読める。
+受け取った側は zip を展開して `Hikidashi.app` を `/Applications` に置き、一度起動する。ウィジェットはデスクトップの右クリック →「ウィジェットを編集」から追加する。MCP の接続先は `/Applications/Hikidashi.app/Contents/Helpers/TaskMCP`。公証が Invalid になったときは `xcrun notarytool log <id> --keychain-profile hikidashi-notary` で理由が読める。
 
 ## 開発ステップ
 
