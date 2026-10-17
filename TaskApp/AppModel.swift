@@ -36,6 +36,8 @@ final class AppModel {
     var mainWindowSelection: String?
     /// ログイン時起動(SMAppService)の現在の状態。
     private(set) var launchesAtLogin = SMAppService.mainApp.status == .enabled
+    /// スプリントの区切り方(DB の setting から読む)。
+    private(set) var sprintSchedule = SprintSchedule.default()
     private static let doneLimit = 20
     private static let activityLimit = 15
     /// ディープリンクで開かれたタスク。一覧でハイライトする。
@@ -94,6 +96,7 @@ final class AppModel {
                 .prefix(Self.doneLimit)
                 .map { $0 }
             recentActivity = try repository.recentActivity(limit: Self.activityLimit)
+            sprintSchedule = try repository.sprintSchedule()
             lastError = nil
         } catch {
             lastError = error.localizedDescription
@@ -239,8 +242,29 @@ final class AppModel {
         return nil
     }
 
-    func add(title: String) {
-        perform { try $0.createTask(NewTask(title: title), actor: .user) }
+    func add(title: String, type: TaskType = .today) {
+        perform { try $0.createTask(NewTask(title: title, type: type), actor: .user) }
+    }
+
+    /// 未完了タスクをタイプ別に、表示順(今日 → 期限あり → スプリント → いつか)で返す。
+    var tasksByType: [(type: TaskType, tasks: [TaskItem])] {
+        TaskType.displayOrder.compactMap { type in
+            let items = tasks.filter { $0.type == type }
+                .sorted { ($0.dueAt ?? .distantFuture, $0.sortOrder) < ($1.dueAt ?? .distantFuture, $1.sortOrder) }
+            return items.isEmpty ? nil : (type, items)
+        }
+    }
+
+    func setSprintSchedule(_ schedule: SprintSchedule) {
+        guard let repository else { return }
+        do {
+            try repository.setSprintSchedule(schedule)
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+        }
+        reload()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     func toggle(_ task: TaskItem) {

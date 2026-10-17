@@ -23,6 +23,10 @@ public struct NewTask: Sendable {
     public var notes: String?
     public var projectId: String?
     public var status: TaskStatus
+    /// タイプ。nil なら期限の有無から推定する(期限あり → 有期限、なし → 無期限)。
+    /// `dueAt` が省略されたときの期限はタイプから決まる
+    /// (当日 → 今日の終わり、スプリント → 今のスプリントの終わり、無期限 → なし)。有期限は `dueAt` 必須。
+    public var type: TaskType?
     public var priority: TaskPriority?
     public var dueAt: Date?
 
@@ -31,6 +35,7 @@ public struct NewTask: Sendable {
         notes: String? = nil,
         projectId: String? = nil,
         status: TaskStatus = .todo,
+        type: TaskType? = nil,
         priority: TaskPriority? = nil,
         dueAt: Date? = nil
     ) {
@@ -38,6 +43,7 @@ public struct NewTask: Sendable {
         self.notes = notes
         self.projectId = projectId
         self.status = status
+        self.type = type
         self.priority = priority
         self.dueAt = dueAt
     }
@@ -48,6 +54,9 @@ public struct TaskChanges: Sendable {
     public var notes: Patch<String?> = .unchanged
     public var projectId: Patch<String?> = .unchanged
     public var status: Patch<TaskStatus> = .unchanged
+    /// タイプを変えると、`dueAt` を同時に渡さない限り期限はタイプの既定値に置き直される。
+    /// タイプを渡さずに `dueAt` だけ変えた場合、期限を消すと無期限に、無期限に期限を付けると有期限になる。
+    public var type: Patch<TaskType> = .unchanged
     public var priority: Patch<TaskPriority?> = .unchanged
     public var dueAt: Patch<Date?> = .unchanged
     public var sortOrder: Patch<Int> = .unchanged
@@ -57,6 +66,7 @@ public struct TaskChanges: Sendable {
         notes: Patch<String?> = .unchanged,
         projectId: Patch<String?> = .unchanged,
         status: Patch<TaskStatus> = .unchanged,
+        type: Patch<TaskType> = .unchanged,
         priority: Patch<TaskPriority?> = .unchanged,
         dueAt: Patch<Date?> = .unchanged,
         sortOrder: Patch<Int> = .unchanged
@@ -65,6 +75,7 @@ public struct TaskChanges: Sendable {
         self.notes = notes
         self.projectId = projectId
         self.status = status
+        self.type = type
         self.priority = priority
         self.dueAt = dueAt
         self.sortOrder = sortOrder
@@ -73,6 +84,7 @@ public struct TaskChanges: Sendable {
 
 public struct TaskFilter: Sendable {
     public var statuses: Set<TaskStatus>?
+    public var types: Set<TaskType>?
     public var projectId: String?
     /// 期限がこの日時以前(境界を含む)のものに絞る。
     public var dueBefore: Date?
@@ -85,6 +97,7 @@ public struct TaskFilter: Sendable {
 
     public init(
         statuses: Set<TaskStatus>? = nil,
+        types: Set<TaskType>? = nil,
         projectId: String? = nil,
         dueBefore: Date? = nil,
         dueAfter: Date? = nil,
@@ -93,6 +106,7 @@ public struct TaskFilter: Sendable {
         limit: Int? = nil
     ) {
         self.statuses = statuses
+        self.types = types
         self.projectId = projectId
         self.dueBefore = dueBefore
         self.dueAfter = dueAfter
@@ -131,6 +145,8 @@ public enum TaskRepositoryError: Error, LocalizedError, Equatable {
     case activityNotFound(Int64)
     /// 取り消そうとした操作の差分が壊れていて解釈できない。
     case activityNotUndoable(Int64)
+    /// 有期限タスクに期限がない。
+    case dueDateRequired
 
     public var errorDescription: String? {
         switch self {
@@ -139,6 +155,7 @@ public enum TaskRepositoryError: Error, LocalizedError, Equatable {
         case .emptyTitle: return "タイトルが空です"
         case .activityNotFound(let id): return "操作履歴が見つかりません: \(id)"
         case .activityNotUndoable(let id): return "この操作は取り消せません: \(id)"
+        case .dueDateRequired: return "有期限のタスクには期限が必要です"
         }
     }
 }
@@ -169,6 +186,9 @@ public final class TaskRepository: Sendable {
             var request = filter.includeArchived ? TaskItem.all() : TaskItem.active
             if let statuses = filter.statuses {
                 request = request.filter(statuses.map(\.rawValue).contains(TaskItem.Columns.status))
+            }
+            if let types = filter.types {
+                request = request.filter(types.map(\.rawValue).contains(TaskItem.Columns.type))
             }
             if let projectId = filter.projectId {
                 request = request.filter(TaskItem.Columns.projectId == projectId)
@@ -242,6 +262,8 @@ public final class TaskRepository: Sendable {
                     throw TaskRepositoryError.projectNotFound(projectId)
                 }
             }
+            let type = new.type ?? (new.dueAt == nil ? .openEnded : .deadline)
+            let dueAt = try Self.resolveDueDate(type: type, dueAt: new.dueAt, now: now, schedule: try Self.sprintSchedule(db))
             let nextOrder = try Int.fetchOne(
                 db,
                 sql: "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM task WHERE deleted_at IS NULL AND project_id IS ?",
@@ -253,8 +275,9 @@ public final class TaskRepository: Sendable {
                 title: title,
                 notes: new.notes,
                 status: new.status,
+                type: type,
                 priority: new.priority,
-                dueAt: new.dueAt,
+                dueAt: dueAt,
                 sortOrder: nextOrder,
                 createdBy: actor.creator,
                 createdAt: now,
@@ -262,10 +285,13 @@ public final class TaskRepository: Sendable {
                 completedAt: new.status == .done ? now : nil
             )
             try task.insert(db)
-            try log(db, task: task.id, actor: actor, action: .create, diff: [
+            var diff: TaskDiff = [
                 "title": FieldChange(from: .null, to: .string(task.title)),
                 "status": FieldChange(from: .null, to: .string(task.status.rawValue)),
-            ], at: now)
+                "type": FieldChange(from: .null, to: .string(task.type.rawValue)),
+            ]
+            if let dueAt { diff["due_at"] = FieldChange(from: .null, to: JSONValue(dueAt)) }
+            try log(db, task: task.id, actor: actor, action: .create, diff: diff, at: now)
             return task
         }
         return task
@@ -303,9 +329,24 @@ public final class TaskRepository: Sendable {
                 diff["priority"] = FieldChange(from: JSONValue(task.priority), to: JSONValue(value))
                 task.priority = value
             }
-            if case .set(let value) = changes.dueAt, value != task.dueAt {
-                diff["due_at"] = FieldChange(from: JSONValue(task.dueAt), to: JSONValue(value))
-                task.dueAt = value
+            if changes.type.isSet || changes.dueAt.isSet {
+                var newType = changes.type.value ?? task.type
+                if !changes.type.isSet, case .set(let due) = changes.dueAt {
+                    // タイプを指定せず期限だけ変えたとき: 消せば無期限、無期限に付ければ有期限。
+                    if due == nil { newType = .openEnded }
+                    else if task.type == .openEnded { newType = .deadline }
+                }
+                // タイプだけ変えたときは期限をタイプの既定値に置き直す。期限も渡されたらそれを優先する。
+                let requestedDue: Date? = changes.dueAt.isSet ? changes.dueAt.value.flatMap { $0 } : (newType == task.type ? task.dueAt : nil)
+                let newDue = try Self.resolveDueDate(type: newType, dueAt: requestedDue, now: now, schedule: try Self.sprintSchedule(db))
+                if newType != task.type {
+                    diff["type"] = FieldChange(from: JSONValue(task.type), to: JSONValue(newType))
+                    task.type = newType
+                }
+                if newDue != task.dueAt {
+                    diff["due_at"] = FieldChange(from: JSONValue(task.dueAt), to: JSONValue(newDue))
+                    task.dueAt = newDue
+                }
             }
             if case .set(let value) = changes.sortOrder, value != task.sortOrder {
                 diff["sort_order"] = FieldChange(from: .int(task.sortOrder), to: .int(value))
@@ -371,6 +412,49 @@ public final class TaskRepository: Sendable {
         }
     }
 
+    // MARK: 設定
+
+    private static let sprintScheduleKey = "sprint_schedule"
+
+    /// スプリントの区切り方。未設定なら水曜開始・7 日。
+    public func sprintSchedule() throws -> SprintSchedule {
+        try database.reader.read { db in try Self.sprintSchedule(db) }
+    }
+
+    /// スプリントの区切り方を保存し、他プロセスに知らせる。
+    public func setSprintSchedule(_ schedule: SprintSchedule) throws {
+        try write { db in
+            let data = try JSONEncoder().encode(schedule)
+            try db.execute(
+                sql: "INSERT INTO setting (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                arguments: [Self.sprintScheduleKey, String(decoding: data, as: UTF8.self)]
+            )
+        }
+    }
+
+    static func sprintSchedule(_ db: Database) throws -> SprintSchedule {
+        guard let raw = try String.fetchOne(db, sql: "SELECT value FROM setting WHERE key = ?", arguments: [sprintScheduleKey]),
+              let schedule = try? JSONDecoder().decode(SprintSchedule.self, from: Data(raw.utf8))
+        else { return .default() }
+        return schedule
+    }
+
+    /// タイプに応じて期限を決める。
+    /// - 無期限: 常に nil。
+    /// - 有期限: 渡された期限が必須。
+    /// - 当日: 渡されなければ今日の終わり。
+    /// - スプリント: 渡されなければ今のスプリントの終わり。
+    static func resolveDueDate(type: TaskType, dueAt: Date?, now: Date, schedule: SprintSchedule, calendar: Calendar = .current) throws -> Date? {
+        switch type {
+        case .openEnded: return nil
+        case .deadline:
+            guard let dueAt else { throw TaskRepositoryError.dueDateRequired }
+            return dueAt
+        case .today: return dueAt ?? calendar.endOfDay(for: now)
+        case .sprint: return dueAt ?? schedule.dueDate(forSprintContaining: now, calendar: calendar)
+        }
+    }
+
     // MARK: 取り消し
 
     /// `activity_log` の 1 件を取り消す。diff の `from` 側の値をタスクに書き戻し、
@@ -431,6 +515,9 @@ public final class TaskRepository: Sendable {
             case "status":
                 guard let raw = value.stringValue, let status = TaskStatus(rawValue: raw) else { throw UndoFieldError() }
                 task.status = status
+            case "type":
+                guard let raw = value.stringValue, let type = TaskType(rawValue: raw) else { throw UndoFieldError() }
+                task.type = type
             case "priority":
                 if case .null = value { task.priority = nil }
                 else {
@@ -458,6 +545,7 @@ public final class TaskRepository: Sendable {
         if a.notes != b.notes { d["notes"] = FieldChange(from: JSONValue(a.notes), to: JSONValue(b.notes)) }
         if a.projectId != b.projectId { d["project_id"] = FieldChange(from: JSONValue(a.projectId), to: JSONValue(b.projectId)) }
         if a.status != b.status { d["status"] = FieldChange(from: JSONValue(a.status), to: JSONValue(b.status)) }
+        if a.type != b.type { d["type"] = FieldChange(from: JSONValue(a.type), to: JSONValue(b.type)) }
         if a.priority != b.priority { d["priority"] = FieldChange(from: JSONValue(a.priority), to: JSONValue(b.priority)) }
         if a.dueAt != b.dueAt { d["due_at"] = FieldChange(from: JSONValue(a.dueAt), to: JSONValue(b.dueAt)) }
         if a.completedAt != b.completedAt { d["completed_at"] = FieldChange(from: JSONValue(a.completedAt), to: JSONValue(b.completedAt)) }

@@ -9,6 +9,7 @@ public struct TaskItem: Codable, Identifiable, Hashable, Sendable {
     public var title: String
     public var notes: String?
     public var status: TaskStatus
+    public var type: TaskType
     public var priority: TaskPriority?
     public var dueAt: Date?
     public var sortOrder: Int
@@ -24,6 +25,7 @@ public struct TaskItem: Codable, Identifiable, Hashable, Sendable {
         title: String,
         notes: String? = nil,
         status: TaskStatus = .todo,
+        type: TaskType = .openEnded,
         priority: TaskPriority? = nil,
         dueAt: Date? = nil,
         sortOrder: Int,
@@ -38,6 +40,7 @@ public struct TaskItem: Codable, Identifiable, Hashable, Sendable {
         self.title = title
         self.notes = notes
         self.status = status
+        self.type = type
         self.priority = priority
         self.dueAt = dueAt
         self.sortOrder = sortOrder
@@ -50,6 +53,18 @@ public struct TaskItem: Codable, Identifiable, Hashable, Sendable {
 
     public var isArchived: Bool { deletedAt != nil }
     public var isDone: Bool { status == .done }
+
+    /// 期限を過ぎていて未完了か。
+    public func isOverdue(now: Date = Date()) -> Bool {
+        guard let dueAt, !isDone else { return false }
+        return dueAt < now
+    }
+
+    /// 期限が `now` と同じ日か(有期限タスクの「今日」バッジ用)。
+    public func isDueToday(now: Date = Date(), calendar: Calendar = .current) -> Bool {
+        guard let dueAt else { return false }
+        return calendar.isDate(dueAt, inSameDayAs: now)
+    }
 }
 
 extension TaskItem: FetchableRecord, PersistableRecord {
@@ -63,6 +78,7 @@ extension TaskItem: FetchableRecord, PersistableRecord {
         public static let title = Column("title")
         public static let notes = Column("notes")
         public static let status = Column("status")
+        public static let type = Column("type")
         public static let priority = Column("priority")
         public static let dueAt = Column("due_at")
         public static let sortOrder = Column("sort_order")

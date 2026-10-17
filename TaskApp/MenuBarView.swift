@@ -5,9 +5,16 @@ import TaskCore
 struct MenuBarView: View {
     @Bindable var model: AppModel
     @State private var draft = ""
+    @State private var draftType: TaskType = .today
     @State private var showDone = false
     @State private var showActivity = false
     @FocusState private var quickInputFocused: Bool
+
+    private var sprintSummary: String {
+        let interval = model.sprintSchedule.interval(containing: .now)
+        let f = Date.FormatStyle().month(.defaultDigits).day()
+        return "\(interval.start.formatted(f))〜\(interval.end.addingTimeInterval(-1).formatted(f))"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -17,15 +24,22 @@ struct MenuBarView: View {
                     .font(.headline)
                 Text(message).font(.caption).foregroundStyle(.secondary)
             case .ready:
-                TextField("タスクを追加…", text: $draft)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($quickInputFocused)
-                    .onSubmit {
-                        let title = draft.trimmingCharacters(in: .whitespaces)
-                        guard !title.isEmpty else { return }
-                        model.add(title: title)
-                        draft = ""
-                    }
+                HStack(spacing: 6) {
+                    TextField("タスクを追加…", text: $draft)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($quickInputFocused)
+                        .onSubmit {
+                            let title = draft.trimmingCharacters(in: .whitespaces)
+                            guard !title.isEmpty else { return }
+                            model.add(title: title, type: draftType)
+                            draft = ""
+                        }
+                    TaskTypePicker(type: $draftType)
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(width: 118)
+                        .help("追加するタスクのタイプ。期限ありは追加後に一覧ウィンドウで日付を付けます")
+                }
 
                 // ディープリンクで開かれたタスクが未完了一覧に無いとき(完了済みなど)は、その 1 件を上に出す。
                 if let selected = model.selectedTaskOutsideList {
@@ -41,13 +55,26 @@ struct MenuBarView: View {
                     ScrollViewReader { proxy in
                         ScrollView {
                             VStack(alignment: .leading, spacing: 4) {
-                                ForEach(model.tasks) { task in
-                                    TaskRow(task: task, isSelected: task.id == model.selectedTaskId) { model.toggle(task) }
-                                        .id(task.id)
+                                ForEach(model.tasksByType, id: \.type) { section in
+                                    HStack(spacing: 4) {
+                                        Image(systemName: section.type.systemImage).font(.caption2)
+                                        Text(section.type.displayName).font(.caption.weight(.semibold))
+                                        if section.type == .sprint {
+                                            Text(sprintSummary).font(.caption2).foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Text("\(section.tasks.count)").font(.caption2).foregroundStyle(.secondary)
+                                    }
+                                    .foregroundStyle(section.type.color)
+                                    .padding(.top, 4)
+                                    ForEach(section.tasks) { task in
+                                        TaskRow(task: task, isSelected: task.id == model.selectedTaskId) { model.toggle(task) }
+                                            .id(task.id)
+                                    }
                                 }
                             }
                         }
-                        .frame(maxHeight: 260)
+                        .frame(maxHeight: 300)
                         .onChange(of: model.selectedTaskId, initial: true) { _, id in
                             guard let id else { return }
                             withAnimation { proxy.scrollTo(id, anchor: .center) }
@@ -129,24 +156,20 @@ private struct TaskRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Button(action: onToggle) {
                 Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(task.isDone ? Color.secondary : task.type.color)
             }
             .buttonStyle(.plain)
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.title)
                     .strikethrough(task.isDone)
                     .foregroundStyle(task.isDone ? .secondary : .primary)
-                HStack(spacing: 6) {
-                    if let due = task.dueAt {
-                        Text(due, style: .date)
-                    }
-                    if task.createdBy == .ai {
-                        Text("AI").padding(.horizontal, 4).background(.quaternary, in: Capsule())
-                    }
+                if task.createdBy == .ai {
+                    Text("AI").font(.caption2).foregroundStyle(.secondary)
+                        .padding(.horizontal, 4).background(.quaternary, in: Capsule())
                 }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
             }
             Spacer()
+            DueBadge(task: task)
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 6)

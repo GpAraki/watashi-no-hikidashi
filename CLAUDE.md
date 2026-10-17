@@ -25,6 +25,7 @@ xcodebuild -project TaskApp.xcodeproj -scheme TaskApp -configuration Debug build
 - **書き込みは必ず `TaskRepository` 経由**。`activity_log` への記録(actor = user / ai / widget)と、書き込み後の Darwin Notification 送信をまとめて行っている。
 - **削除は論理削除**(`deleted_at`)。物理削除 API は作らない。AI には `archive_task` だけを公開する。
 - **更新の「変更しない」と「nil にする」は `Patch<T>`** で区別する(`.unchanged` / `.set(nil)`)。
+- **タスクのタイプ(`TaskType`)が期限を決める**。当日は今日の終わり、スプリントは `SprintSchedule`(`setting` テーブル、既定は水曜開始 7 日)の終わり、有期限は `due_at` 必須、無期限は常に nil。この解決は `TaskRepository.resolveDueDate` に集約し、UI 側で期限を計算しない。タイプ省略時は期限の有無から推定する。
 - **プロセス間通知はペイロードを持たない**。受信側は必ず DB を読み直す。受信側で数百 ms のデバウンスを入れる(`ChangeNotifier.observe(debounce:)`)。
 - **App Group 識別子は Team ID 接頭辞形式**。変更時は `project.yml` と `TaskCore/Sources/TaskCore/AppGroup.swift` を同時に直す。
 - Swift 6 言語モード、strict concurrency = complete。`Sendable` でない Foundation のフォーマッタを static に置かない(`Date.ISO8601FormatStyle` などを使う)。

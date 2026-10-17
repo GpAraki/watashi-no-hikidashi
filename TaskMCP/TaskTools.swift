@@ -9,6 +9,9 @@ struct TaskTools: Sendable {
     static let serverInstructions = """
         個人用タスク管理アプリ「私の引き出し」のタスクを読み書きします。
         - status は todo / doing / done。
+        - type はタスクの約束の強さ: today(今日中。期限は自動でその日の終わり)、sprint(今のスプリント内。期限は自動でスプリント終了)、
+          deadline(日付まで。due_at 必須)、open_ended(いつか。期限なし)。
+          type を省略すると due_at があれば deadline、なければ open_ended になる。「今日やる」なら today、「今週中」なら sprint を選ぶ。
         - priority は 1(低)〜3(高)の整数。
         - 日時は ISO 8601(例: 2026-10-18T15:00:00+09:00)。日付だけ(2026-10-18)を渡すとその日の 0 時として扱います。
         - 削除は archive_task による論理削除のみです。
@@ -20,6 +23,11 @@ struct TaskTools: Sendable {
     private static let statusSchema: Value = .object([
         "type": "string",
         "enum": .array(TaskStatus.allCases.map { .string($0.rawValue) }),
+    ])
+    private static let typeSchema: Value = .object([
+        "type": "string",
+        "enum": .array(TaskType.allCases.map { .string($0.rawValue) }),
+        "description": "today = 今日中, sprint = 今のスプリント内, deadline = 日付まで(due_at 必須), open_ended = いつか",
     ])
     private static let prioritySchema: Value = .object([
         "type": "integer", "minimum": 1, "maximum": 3,
@@ -34,7 +42,7 @@ struct TaskTools: Sendable {
     let tools: [Tool] = [
         Tool(
             name: "list_tasks",
-            description: "タスクを一覧する。既定では論理削除されていないものをすべて返す。status・プロジェクト・期限・優先度で絞り込める。",
+            description: "タスクを一覧する。既定では論理削除されていないものをすべて返す。status・type・プロジェクト・期限・優先度で絞り込める。",
             inputSchema: .object([
                 "type": "object",
                 "properties": .object([
@@ -42,6 +50,11 @@ struct TaskTools: Sendable {
                         "description": "絞り込む status。複数可。",
                         "type": "array",
                         "items": statusSchema,
+                    ]),
+                    "type": .object([
+                        "description": "絞り込む type。複数可。",
+                        "type": "array",
+                        "items": typeSchema,
                     ]),
                     "project_id": .object(["type": "string"]),
                     "due_before": dateSchema,
@@ -63,6 +76,7 @@ struct TaskTools: Sendable {
                     "notes": .object(["type": "string"]),
                     "project_id": .object(["type": "string", "description": "list_projects で得た id"]),
                     "status": statusSchema,
+                    "type": typeSchema,
                     "priority": prioritySchema,
                     "due_at": dateSchema,
                 ]),
@@ -71,7 +85,7 @@ struct TaskTools: Sendable {
         ),
         Tool(
             name: "update_task",
-            description: "タスクのタイトル、メモ、プロジェクト、優先度、期限、status、並び順を変更する。渡したフィールドだけが変わる。notes / project_id / priority / due_at に null を渡すとクリアされる。",
+            description: "タスクのタイトル、メモ、プロジェクト、type、優先度、期限、status、並び順を変更する。渡したフィールドだけが変わる。notes / project_id / priority / due_at に null を渡すとクリアされる(due_at を null にすると open_ended になる)。",
             inputSchema: .object([
                 "type": "object",
                 "properties": .object([
@@ -80,6 +94,11 @@ struct TaskTools: Sendable {
                     "notes": .object(["type": .array(["string", "null"])]),
                     "project_id": .object(["type": .array(["string", "null"])]),
                     "status": statusSchema,
+                    "type": .object([
+                        "type": "string",
+                        "enum": .array(TaskType.allCases.map { .string($0.rawValue) }),
+                        "description": "タイプを変える。due_at を同時に渡さなければ期限はタイプの既定値に置き直される",
+                    ]),
                     "priority": .object([
                         "type": .array(["integer", "null"]), "minimum": 1, "maximum": 3,
                         "description": "1 = 低, 2 = 中, 3 = 高。null でクリア",
@@ -130,6 +149,7 @@ struct TaskTools: Sendable {
             case "list_tasks":
                 let filter = TaskFilter(
                     statuses: try args.statuses("status"),
+                    types: try args.types("type"),
                     projectId: try args.string("project_id"),
                     dueBefore: try args.date("due_before"),
                     dueAfter: try args.date("due_after"),
@@ -145,6 +165,7 @@ struct TaskTools: Sendable {
                     notes: try args.string("notes"),
                     projectId: try args.string("project_id"),
                     status: try args.status("status") ?? .todo,
+                    type: try args.type("type"),
                     priority: try args.priority("priority"),
                     dueAt: try args.date("due_at")
                 )
@@ -157,6 +178,7 @@ struct TaskTools: Sendable {
                     notes: try args.patch("notes", args.string),
                     projectId: try args.patch("project_id", args.string),
                     status: try args.nonNullPatch("status", args.status),
+                    type: try args.nonNullPatch("type", args.type),
                     priority: try args.patch("priority", args.priority),
                     dueAt: try args.patch("due_at", args.date),
                     sortOrder: try args.nonNullPatch("sort_order", args.int)
@@ -273,6 +295,27 @@ extension [String: Value] {
                 throw ToolArgumentError(message: "'\(key)' は todo / doing / done の配列です")
             }
             set.insert(status)
+        }
+        return set
+    }
+
+    func type(_ key: String) throws -> TaskType? {
+        guard let raw = self[key], !raw.isNull else { return nil }
+        guard let s = raw.stringValue, let t = TaskType(rawValue: s) else {
+            throw ToolArgumentError(message: "'\(key)' は \(TaskType.allCases.map(\.rawValue).joined(separator: " / ")) のいずれかです")
+        }
+        return t
+    }
+
+    func types(_ key: String) throws -> Set<TaskType>? {
+        guard let raw = self[key], !raw.isNull else { return nil }
+        let items: [Value] = raw.arrayValue ?? [raw]
+        var set = Set<TaskType>()
+        for item in items {
+            guard let s = item.stringValue, let t = TaskType(rawValue: s) else {
+                throw ToolArgumentError(message: "'\(key)' は \(TaskType.allCases.map(\.rawValue).joined(separator: " / ")) の配列です")
+            }
+            set.insert(t)
         }
         return set
     }
