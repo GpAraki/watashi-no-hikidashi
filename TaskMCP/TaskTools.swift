@@ -15,6 +15,7 @@ struct TaskTools: Sendable {
         - priority は 1(低)〜3(高)の整数。
         - 日時は ISO 8601(例: 2026-10-18T15:00:00+09:00)。日付だけ(2026-10-18)を渡すとその日の 0 時として扱います。
         - 削除は archive_task による論理削除のみです。
+        - add_link でタスクに Notion / Jira / GitHub などの URL を付けられます。参照先があるタスクは notes に URL を書くのではなく add_link を使ってください。list_tasks の結果には links が含まれます。
         - add_comment でタスクに状況や判断理由を書き残せます。進捗を伝えたいとき、保留にした理由、次にやることなどはコメントに書いてください(タイトルやメモの上書きではなく)。
         - AI が行った変更はすべて履歴に残り、ユーザーが取り消せます。
         """
@@ -156,6 +157,30 @@ struct TaskTools: Sendable {
             annotations: Tool.Annotations(readOnlyHint: true)
         ),
         Tool(
+            name: "add_link",
+            description: "タスクに外部リンク(Notion、Jira、GitHub、Figma など)を付ける。label を省略するとサービス名が表示名になる。同じ URL は二重に登録されない。",
+            inputSchema: .object([
+                "type": "object",
+                "properties": .object([
+                    "id": idSchema,
+                    "url": .object(["type": "string", "description": "https:// から始まる URL"]),
+                    "label": .object(["type": "string", "description": "表示名(省略可)"]),
+                ]),
+                "required": .array(["id", "url"]),
+            ])
+        ),
+        Tool(
+            name: "remove_link",
+            description: "タスクからリンクを外す(論理削除。ユーザーが操作履歴から戻せる)。link_id は list_tasks の links[].id。",
+            inputSchema: .object([
+                "type": "object",
+                "properties": .object([
+                    "link_id": .object(["type": "integer"]),
+                ]),
+                "required": .array(["link_id"]),
+            ])
+        ),
+        Tool(
             name: "list_projects",
             description: "プロジェクトの一覧を返す。",
             inputSchema: .object(["type": "object", "properties": .object([:])]),
@@ -180,7 +205,9 @@ struct TaskTools: Sendable {
                     includeArchived: try args.bool("include_archived") ?? false,
                     limit: try args.int("limit")
                 )
-                return try result(try repository.tasks(matching: filter))
+                let tasks = try repository.tasks(matching: filter)
+                let links = try repository.linksByTask()
+                return try result(tasks.map { TaskWithLinks(task: $0, links: links[$0.id] ?? []) })
 
             case "create_task":
                 let new = NewTask(
@@ -215,6 +242,15 @@ struct TaskTools: Sendable {
             case "archive_task":
                 let id = try args.required("id", args.string)
                 return try result(try repository.archiveTask(id: id, actor: .ai))
+
+            case "add_link":
+                let id = try args.required("id", args.string)
+                let url = try args.required("url", args.string)
+                return try result(try repository.addLink(taskId: id, url: url, label: try args.string("label"), actor: .ai))
+
+            case "remove_link":
+                let linkId = try args.required("link_id", args.int)
+                return try result(try repository.removeLink(id: Int64(linkId), actor: .ai))
 
             case "add_comment":
                 let id = try args.required("id", args.string)
@@ -382,5 +418,19 @@ enum DateParsing {
             return local.date(from: DateComponents(year: utc.year, month: utc.month, day: utc.day))
         }
         return nil
+    }
+}
+
+/// list_tasks の 1 件。TaskItem のフィールドに links を足して出す。
+struct TaskWithLinks: Encodable {
+    let task: TaskItem
+    let links: [TaskLink]
+
+    enum ExtraKeys: String, CodingKey { case links }
+
+    func encode(to encoder: Encoder) throws {
+        try task.encode(to: encoder)
+        var extra = encoder.container(keyedBy: ExtraKeys.self)
+        try extra.encode(links, forKey: .links)
     }
 }

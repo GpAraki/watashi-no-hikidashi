@@ -120,6 +120,22 @@ public struct AppDatabase: Sendable {
             try db.create(index: "comment_task", on: "comment", columns: ["task_id"])
         }
 
+        // タスクへの外部リンク。
+        migrator.registerMigration("v4_task_link") { db in
+            try db.create(table: "task_link") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("task_id", .text).notNull()
+                    .references("task", onDelete: .cascade)
+                t.column("url", .text).notNull()
+                t.column("label", .text)
+                t.column("created_by", .text).notNull()
+                    .check { ["user", "ai", "widget"].contains($0) }
+                t.column("created_at", .datetime).notNull()
+                t.column("deleted_at", .datetime)
+            }
+            try db.create(index: "task_link_task", on: "task_link", columns: ["task_id"])
+        }
+
         return migrator
     }
 }

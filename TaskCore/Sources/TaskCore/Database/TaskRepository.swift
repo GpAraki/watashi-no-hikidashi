@@ -149,6 +149,8 @@ public enum TaskRepositoryError: Error, LocalizedError, Equatable {
     case dueDateRequired
     case commentNotFound(Int64)
     case emptyComment
+    case linkNotFound(Int64)
+    case invalidURL(String)
 
     public var errorDescription: String? {
         switch self {
@@ -160,6 +162,8 @@ public enum TaskRepositoryError: Error, LocalizedError, Equatable {
         case .dueDateRequired: return "有期限のタスクには期限が必要です"
         case .commentNotFound(let id): return "コメントが見つかりません: \(id)"
         case .emptyComment: return "コメントが空です"
+        case .linkNotFound(let id): return "リンクが見つかりません: \(id)"
+        case .invalidURL(let s): return "URL として解釈できません: \(s)"
         }
     }
 }
@@ -476,6 +480,74 @@ public final class TaskRepository: Sendable {
         return comment
     }
 
+    // MARK: リンク
+
+    /// タスクのリンク(削除済みを除く)。追加順。
+    public func links(taskId: String) throws -> [TaskLink] {
+        try database.reader.read { db in
+            try TaskLink.filter(TaskLink.Columns.taskId == taskId).filter(TaskLink.Columns.deletedAt == nil)
+                .order(TaskLink.Columns.createdAt, TaskLink.Columns.id).fetchAll(db)
+        }
+    }
+
+    /// 全タスクのリンクをタスク id ごとにまとめて返す(一覧・ウィジェット用)。
+    public func linksByTask() throws -> [String: [TaskLink]] {
+        try database.reader.read { db in
+            let all = try TaskLink.filter(TaskLink.Columns.deletedAt == nil)
+                .order(TaskLink.Columns.createdAt, TaskLink.Columns.id).fetchAll(db)
+            return Dictionary(grouping: all, by: \.taskId)
+        }
+    }
+
+    /// リンクを追加する。http(s) か、スキーム付きの URL を受け付ける。同じ URL が既にあればそれを返す。
+    @discardableResult
+    public func addLink(taskId: String, url rawURL: String, label: String? = nil, actor: ChangeActor) throws -> TaskLink {
+        let trimmed = rawURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed), url.scheme != nil, !trimmed.isEmpty else {
+            throw TaskRepositoryError.invalidURL(rawURL)
+        }
+        let label = label?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        let now = now()
+        return try write { db in
+            _ = try fetchTask(db, id: taskId)
+            if let existing = try TaskLink.filter(TaskLink.Columns.taskId == taskId)
+                .filter(TaskLink.Columns.url == url.absoluteString).filter(TaskLink.Columns.deletedAt == nil).fetchOne(db) {
+                return existing
+            }
+            var link = TaskLink(taskId: taskId, url: url, label: label, createdBy: actor, createdAt: now)
+            try link.insert(db)
+            try log(db, task: taskId, actor: actor, action: .link, diff: [
+                "link_id": FieldChange(from: .null, to: .int(Int(link.id!))),
+                "url": FieldChange(from: .null, to: .string(url.absoluteString)),
+                "label": FieldChange(from: .null, to: JSONValue(label)),
+            ], at: now)
+            return link
+        }
+    }
+
+    /// リンクを論理削除する。
+    @discardableResult
+    public func removeLink(id: Int64, actor: ChangeActor) throws -> TaskLink {
+        let now = now()
+        return try write { db in try Self.setLinkDeleted(db, id: id, deleted: true, actor: actor, at: now) }
+    }
+
+    private static func setLinkDeleted(_ db: Database, id: Int64, deleted: Bool, actor: ChangeActor, at now: Date) throws -> TaskLink {
+        guard var link = try TaskLink.fetchOne(db, key: id) else { throw TaskRepositoryError.linkNotFound(id) }
+        guard link.isDeleted != deleted else { return link }
+        link.deletedAt = deleted ? now : nil
+        try link.update(db)
+        let change = deleted
+            ? FieldChange(from: .string(link.url.absoluteString), to: .null)
+            : FieldChange(from: .null, to: .string(link.url.absoluteString))
+        var entry = ActivityLog(taskId: link.taskId, actor: actor, action: deleted ? .deleteLink : .link, diff: [
+            "link_id": FieldChange(from: .int(Int(id)), to: .int(Int(id))),
+            "url": change,
+        ], createdAt: now)
+        try entry.insert(db)
+        return link
+    }
+
     // MARK: 設定
 
     private static let sprintScheduleKey = "sprint_schedule"
@@ -536,6 +608,13 @@ public final class TaskRepository: Sendable {
             }
             guard let diff = entry.decodedDiff(), !diff.isEmpty else {
                 throw TaskRepositoryError.activityNotUndoable(activityId)
+            }
+            if entry.action == .link || entry.action == .deleteLink {
+                guard let linkId = diff["link_id"]?.to.intValue else {
+                    throw TaskRepositoryError.activityNotUndoable(activityId)
+                }
+                _ = try Self.setLinkDeleted(db, id: Int64(linkId), deleted: entry.action == .link, actor: actor, at: now)
+                return try fetchTask(db, id: entry.taskId)
             }
             if entry.action == .comment || entry.action == .deleteComment {
                 // コメントの追加は論理削除で、削除は復元で取り消す。
@@ -636,6 +715,8 @@ public final class TaskRepository: Sendable {
         case .create: return .archive
         case .comment: return .deleteComment
         case .deleteComment: return .comment
+        case .link: return .deleteLink
+        case .deleteLink: return .link
         case .update:
             if let status = diff["status"]?.to.stringValue {
                 if status == TaskStatus.done.rawValue { return .complete }
@@ -719,4 +800,8 @@ public final class TaskRepository: Sendable {
         notifier?.post()
         return result
     }
+}
+
+extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

@@ -16,6 +16,8 @@ struct TaskEntry: TimelineEntry {
     let sprintInterval: DateInterval
     let sprintDoneCount: Int
     let openEndedCount: Int
+    /// タスク id → 最初のリンク。行のアイコンからブラウザで開く。
+    let firstLinks: [String: URL]
     let error: String?
 
     var todayDoneCount: Int { today.filter(\.isDone).count }
@@ -23,7 +25,7 @@ struct TaskEntry: TimelineEntry {
 
     static func empty(_ configuration: TaskWidgetConfiguration, error: String? = nil) -> TaskEntry {
         TaskEntry(date: .now, configuration: configuration, today: [], deadlines: [], sprint: [],
-                  sprintInterval: SprintSchedule.default().interval(containing: .now), sprintDoneCount: 0, openEndedCount: 0, error: error)
+                  sprintInterval: SprintSchedule.default().interval(containing: .now), sprintDoneCount: 0, openEndedCount: 0, firstLinks: [:], error: error)
     }
 }
 
@@ -79,6 +81,12 @@ struct TaskTimelineProvider: AppIntentTimelineProvider {
         let calendar = Calendar.current
         let all = try repository.tasks(matching: TaskFilter(statuses: nil))
         let schedule = try repository.sprintSchedule()
+        let links = try repository.linksByTask()
+        var firstLinks: [String: URL] = [:]
+        for task in all {
+            if let link = links[task.id]?.first { firstLinks[task.id] = link.url }
+            else if let detected = URLDetection.urls(in: task.notes).first { firstLinks[task.id] = detected }
+        }
         let sprintInterval = schedule.interval(containing: now, calendar: calendar)
 
         let today = all.filter { task in
@@ -115,6 +123,7 @@ struct TaskTimelineProvider: AppIntentTimelineProvider {
             sprintInterval: sprintInterval,
             sprintDoneCount: sprintTasks.count - sprint.count,
             openEndedCount: all.filter { $0.type == .openEnded && !$0.isDone }.count,
+            firstLinks: firstLinks,
             error: nil
         )
     }
@@ -142,7 +151,7 @@ struct TaskTimelineProvider: AppIntentTimelineProvider {
                 task("ウィジェットのタイプ別表示", .sprint, due: schedule.dueDate(forSprintContaining: now), order: 1),
                 task("MCP に type を追加", .sprint, due: schedule.dueDate(forSprintContaining: now), order: 2),
             ],
-            sprintInterval: schedule.interval(containing: now), sprintDoneCount: 3, openEndedCount: 5, error: nil
+            sprintInterval: schedule.interval(containing: now), sprintDoneCount: 3, openEndedCount: 5, firstLinks: [:], error: nil
         )
     }
 }
@@ -196,7 +205,7 @@ struct TaskWidgetView: View {
             }
             ProgressBar(value: progress(done: entry.todayDoneCount, total: entry.today.count), color: TaskType.today.color)
             if let first = entry.today.first(where: { !$0.isDone }) {
-                TaskWidgetRow(task: first, now: entry.date, compact: true)
+                TaskWidgetRow(task: first, now: entry.date, link: entry.firstLinks[first.id], compact: true)
             } else if entry.today.isEmpty {
                 Text("当日タスクなし").font(.caption).foregroundStyle(.secondary)
             } else {
@@ -205,7 +214,7 @@ struct TaskWidgetView: View {
             Spacer(minLength: 0)
             if entry.configuration.showDeadline, let urgent = entry.deadlines.first {
                 Divider()
-                TaskWidgetRow(task: urgent, now: entry.date, compact: true)
+                TaskWidgetRow(task: urgent, now: entry.date, link: entry.firstLinks[urgent.id], compact: true)
             }
         }
     }
@@ -218,7 +227,7 @@ struct TaskWidgetView: View {
             if entry.configuration.showDeadline, !entry.deadlines.isEmpty {
                 Divider()
                 ForEach(entry.deadlines.prefix(2)) { task in
-                    TaskWidgetRow(task: task, now: entry.date)
+                    TaskWidgetRow(task: task, now: entry.date, link: entry.firstLinks[task.id])
                 }
             }
             Spacer(minLength: 0)
@@ -233,7 +242,7 @@ struct TaskWidgetView: View {
             if entry.configuration.showDeadline {
                 sectionHeader("期限あり", trailing: entry.deadlines.isEmpty ? "なし" : nil)
                 ForEach(entry.deadlines.prefix(3)) { task in
-                    TaskWidgetRow(task: task, now: entry.date)
+                    TaskWidgetRow(task: task, now: entry.date, link: entry.firstLinks[task.id])
                 }
                 overflow(entry.deadlines.count - 3)
             }
@@ -241,7 +250,7 @@ struct TaskWidgetView: View {
                 sectionHeader("スプリント", trailing: sprintSummary)
                 ProgressBar(value: progress(done: entry.sprintDoneCount, total: entry.sprintTotalCount), color: TaskType.sprint.color)
                 ForEach(entry.sprint.prefix(3)) { task in
-                    TaskWidgetRow(task: task, now: entry.date)
+                    TaskWidgetRow(task: task, now: entry.date, link: entry.firstLinks[task.id])
                 }
                 overflow(entry.sprint.count - 3)
             }
@@ -270,7 +279,7 @@ struct TaskWidgetView: View {
                 Text("当日タスクはありません").font(.caption).foregroundStyle(.secondary)
             }
             ForEach(entry.today.prefix(limit)) { task in
-                TaskWidgetRow(task: task, now: entry.date)
+                TaskWidgetRow(task: task, now: entry.date, link: entry.firstLinks[task.id])
             }
             overflow(entry.today.count - limit)
         }
@@ -325,6 +334,7 @@ struct ProgressBar: View {
 struct TaskWidgetRow: View {
     let task: TaskItem
     let now: Date
+    var link: URL? = nil
     var compact = false
 
     var body: some View {
@@ -350,6 +360,15 @@ struct TaskWidgetRow: View {
                     }
                 }
                 .contentShape(Rectangle())
+            }
+
+            if let link, !compact {
+                // 外部リンクはブラウザで直接開く(本体を経由しない)。
+                Link(destination: link) {
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .font(compact ? .caption : .callout)

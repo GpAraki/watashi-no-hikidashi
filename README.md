@@ -103,9 +103,15 @@ Claude Desktop は `~/Library/Application Support/Claude/claude_desktop_config.j
 | `archive_task` | 論理削除する。物理削除は公開しない |
 | `add_comment` | タスクにコメントを追加する(author = ai)。進捗や保留の理由などの状況を残す |
 | `list_comments` | タスクのコメントを古い順に返す |
+| `add_link` | タスクに Notion / Jira / GitHub などの URL を付ける。label 省略時はサービス名 |
+| `remove_link` | リンクを外す(論理削除) |
 | `list_projects` | プロジェクト一覧を返す |
 
 書き込み系のツールは `activity_log` に `actor = ai` で記録し、書き込み後に Darwin Notification を投げる。
+
+### リンク
+
+タスクには複数の外部リンクを付けられる(`task_link` テーブル)。表示名を省略するとホスト名から Notion / Jira / Confluence / GitHub / Figma などを自動で付ける。一覧ウィンドウの編集フォームにチップと追加欄があり、notes に貼られた URL も点線のチップとして検出して「+」で正式なリンクにできる。ポップオーバーの行とウィジェットの行からも開ける(ウィジェットは本体を経由せずブラウザで開く)。`list_tasks` の結果には `links` が含まれる。追加・削除は `activity_log` に残り、取り消せる。
 
 ### コメント
 

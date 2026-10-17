@@ -159,6 +159,7 @@ struct MainWindowView: View {
                                 if let n = model.commentCounts[task.id], n > 0 {
                                     Label("\(n)", systemImage: "bubble.left").labelStyle(.titleAndIcon)
                                 }
+                                LinksButton(links: model.links(for: task.id), detected: model.detectedURLs(for: task))
                             }
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -331,6 +332,10 @@ private struct TaskEditor: View {
             }
             .padding(.top, 4)
 
+            Section("リンク") {
+                LinksSection(task: task, model: model)
+            }
+
             Section("コメント") {
                 CommentsSection(task: task, model: model)
             }
@@ -452,5 +457,74 @@ private struct CommentsSection: View {
         model.addComment(to: task.id, body: body)
         draft = ""
         focused = true
+    }
+}
+
+/// リンクのチップと追加欄。notes に書かれた URL は点線のチップで出し、+ で正式なリンクにできる。
+private struct LinksSection: View {
+    let task: TaskItem
+    @Bindable var model: AppModel
+    @State private var draftURL = ""
+    @State private var draftLabel = ""
+
+    var body: some View {
+        let links = model.links(for: task.id)
+        let detected = model.detectedURLs(for: task)
+        if links.isEmpty && detected.isEmpty {
+            Text("Notion や Jira の URL を貼ると、ここから開けます").font(.caption).foregroundStyle(.secondary)
+        }
+        FlowLayout(spacing: 6) {
+            ForEach(links) { link in
+                LinkChip(url: link.url, label: link.displayLabel, onRemove: { model.removeLink(link) })
+            }
+            ForEach(detected, id: \.self) { url in
+                LinkChip(url: url, detected: true, onRegister: { model.addLink(to: task.id, url: url.absoluteString) })
+            }
+        }
+        HStack(spacing: 6) {
+            TextField("https://…", text: $draftURL)
+                .onSubmit(submit)
+            TextField("ラベル(省略可)", text: $draftLabel)
+                .frame(width: 120)
+                .onSubmit(submit)
+            Button("追加", action: submit)
+                .disabled(URL(string: draftURL.trimmingCharacters(in: .whitespaces))?.scheme == nil)
+        }
+    }
+
+    private func submit() {
+        let url = draftURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard URL(string: url)?.scheme != nil else { return }
+        model.addLink(to: task.id, url: url, label: draftLabel.trimmingCharacters(in: .whitespaces))
+        draftURL = ""
+        draftLabel = ""
+    }
+}
+
+/// 左上から詰めて並べ、幅が足りなければ折り返す。チップの一覧に使う。
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 320
+        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > width { x = 0; y += rowHeight + spacing; rowHeight = 0 }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return CGSize(width: width, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x > bounds.minX, x + size.width > bounds.maxX { x = bounds.minX; y += rowHeight + spacing; rowHeight = 0 }
+            view.place(at: CGPoint(x: x, y: y), proposal: .unspecified)
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
     }
 }

@@ -82,4 +82,8 @@ public enum ActivityAction: String, Codable, Sendable, DatabaseValueConvertible 
     case comment
     /// コメントの論理削除。
     case deleteComment = "delete_comment"
+    /// リンクの追加。diff は link_id と url。
+    case link
+    /// リンクの論理削除。
+    case deleteLink = "delete_link"
 }
