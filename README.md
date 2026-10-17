@@ -145,7 +145,12 @@ xcrun stapler staple "$APP"
 ditto -c -k --keepParent "$APP" build/dist/Hikidashi-$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist").zip
 ```
 
-受け取った側は zip を展開して `Hikidashi.app` を `/Applications` に置き、一度起動する。ウィジェットはデスクトップの右クリック →「ウィジェットを編集」から追加する。MCP の接続先は `/Applications/Hikidashi.app/Contents/Helpers/TaskMCP`。公証が Invalid になったときは `xcrun notarytool log <id> --keychain-profile hikidashi-notary` で理由が読める。
+受け取った側は zip を展開して `Hikidashi.app` を `/Applications` に置き、一度起動する。アプリの置き場所を変えたり別のビルドに入れ替えたりしたあとでウィジェットが空のままになるときは、ウィジェットのデーモンに古い情報が残っている。次で復帰する(ウィジェットはすぐ描き直される)。
+
+```bash
+pluginkit -a /Applications/Hikidashi.app/Contents/PlugIns/TaskWidget.appex && killall chronod
+```
+ウィジェットはデスクトップの右クリック →「ウィジェットを編集」から追加する。MCP の接続先は `/Applications/Hikidashi.app/Contents/Helpers/TaskMCP`。公証が Invalid になったときは `xcrun notarytool log <id> --keychain-profile hikidashi-notary` で理由が読める。
 
 ## 開発ステップ
 
