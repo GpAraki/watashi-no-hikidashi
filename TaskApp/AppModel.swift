@@ -248,8 +248,11 @@ final class AppModel {
         return nil
     }
 
-    func add(title: String, type: TaskType = .today) {
-        perform { try $0.createTask(NewTask(title: title, type: type), actor: .user) }
+    @discardableResult
+    func add(title: String, type: TaskType = .today, dueAt: Date? = nil) -> TaskItem? {
+        var created: TaskItem?
+        perform { created = try $0.createTask(NewTask(title: title, type: type, dueAt: dueAt), actor: .user) }
+        return created
     }
 
     // MARK: リンク
@@ -325,13 +328,15 @@ final class AppModel {
 
     private func perform(_ work: (TaskRepository) throws -> Void) {
         guard let repository else { return }
+        var writeError: String?
         do {
             try work(repository)
-            lastError = nil
         } catch {
-            lastError = error.localizedDescription
+            writeError = error.localizedDescription
         }
         reload()
+        // reload の成功で、書き込み失敗のメッセージを消さない。
+        if let writeError { lastError = writeError }
         // 自分で書いたときは通知を待たずに即時更新する。
         WidgetCenter.shared.reloadAllTimelines()
     }

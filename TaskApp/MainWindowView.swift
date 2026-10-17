@@ -12,6 +12,8 @@ struct MainWindowView: View {
     @AppStorage("mainWindow.showActivity") private var showActivity = false
     @State private var scope: Scope = .open
     @State private var aiOnly = false
+    @State private var search = ""
+    @State private var showNewTask = false
     @State private var tasks: [TaskItem] = []
     @State private var activity: [ActivityEntry] = []
 
@@ -53,6 +55,7 @@ struct MainWindowView: View {
             VStack(spacing: 0) {
                 if let task = selectedTask {
                     TaskEditor(task: task, model: model)
+                        .id(task.id)
                         .padding()
                 } else {
                     Text("タスクを選ぶと編集できます")
@@ -77,6 +80,12 @@ struct MainWindowView: View {
                 .labelsHidden()
                 .help("一覧とカレンダーを切り替える")
             }
+            ToolbarItem(placement: .primaryAction) {
+                Button { showNewTask = true } label: {
+                    Label("タスクを追加", systemImage: "plus")
+                }
+                .keyboardShortcut("n", modifiers: .command)
+            }
             ToolbarItem(placement: .automatic) {
                 Toggle(isOn: $showActivity) {
                     Label("操作履歴", systemImage: "clock.arrow.circlepath")
@@ -94,6 +103,15 @@ struct MainWindowView: View {
                     set: { model.setLaunchesAtLogin($0) }
                 ))
                 .toggleStyle(.checkbox)
+            }
+        }
+        .sheet(isPresented: $showNewTask) {
+            NewTaskSheet(model: model) { task in
+                scope = .open
+                search = ""
+                viewMode = .list
+                refresh()
+                model.mainWindowSelection = task.id
             }
         }
         .onAppear {
@@ -116,7 +134,11 @@ struct MainWindowView: View {
     }
 
     private var visibleTasks: [TaskItem] {
-        tasks.filter(scope.includes).sorted { a, b in
+        tasks.filter(scope.includes).filter { task in
+            let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
+            return query.isEmpty || task.title.localizedStandardContains(query)
+                || (task.notes?.localizedStandardContains(query) ?? false)
+        }.sorted { a, b in
             if a.type.sortRank != b.type.sortRank { return a.type.sortRank < b.type.sortRank }
             return (a.dueAt ?? .distantFuture, a.sortOrder) < (b.dueAt ?? .distantFuture, b.sortOrder)
         }
@@ -124,6 +146,19 @@ struct MainWindowView: View {
 
     private var taskList: some View {
         VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("タスクを検索", text: $search)
+                    .textFieldStyle(.plain)
+                if !search.isEmpty {
+                    Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("検索をクリア")
+                }
+            }
+            .padding(8)
+            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+            .padding([.horizontal, .top], 8)
             Picker("", selection: $scope) {
                 ForEach(Scope.allCases) { Text($0.label).tag($0) }
             }
@@ -171,7 +206,17 @@ struct MainWindowView: View {
             }
             .overlay {
                 if visibleTasks.isEmpty {
-                    Text("タスクはありません").foregroundStyle(.secondary)
+                    VStack(spacing: 10) {
+                        Text(search.isEmpty ? "タスクはありません" : "一致するタスクはありません")
+                            .foregroundStyle(.secondary)
+                        if search.isEmpty {
+                            Button { showNewTask = true } label: {
+                                Label("タスクを追加", systemImage: "plus")
+                            }
+                        } else {
+                            Button("検索をクリア") { search = "" }
+                        }
+                    }
                 }
             }
         }
@@ -254,7 +299,55 @@ struct MainWindowView: View {
     }
 }
 
-/// 選択中タスクの編集フォーム。フィールドごとに確定時に保存する。
+/// 追加時にタイプと期限まで指定できる共通の入口。
+private struct NewTaskSheet: View {
+    @Bindable var model: AppModel
+    let onCreate: (TaskItem) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var titleFocused: Bool
+    @State private var title = ""
+    @State private var type: TaskType = .today
+    @State private var due = Calendar.current.date(bySettingHour: 18, minute: 0, second: 0, of: .now) ?? .now
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("タスクを追加").font(.title2.weight(.semibold))
+            Form {
+                TextField("タイトル", text: $title)
+                    .focused($titleFocused)
+                TaskTypePicker(type: $type, label: "タイプ")
+                if type == .deadline {
+                    DatePicker("期限", selection: $due, displayedComponents: [.date, .hourAndMinute])
+                }
+            }
+            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            HStack {
+                Button("キャンセル") { dismiss() }.keyboardShortcut(.cancelAction)
+                Spacer()
+                Button("追加", action: create)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(24)
+        .frame(width: 400)
+        .onAppear { titleFocused = true }
+    }
+
+    private func create() {
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTitle.isEmpty else { return }
+        guard let task = model.add(title: cleanTitle, type: type, dueAt: type == .deadline ? due : nil) else {
+            error = model.lastError ?? "タスクを追加できませんでした"
+            return
+        }
+        onCreate(task)
+        dismiss()
+    }
+}
+
+/// 選択中タスクの編集フォーム。テキストは入力が落ち着いたときと画面を離れるときに自動保存する。
 private struct TaskEditor: View {
     let task: TaskItem
     @Bindable var model: AppModel
@@ -262,7 +355,6 @@ private struct TaskEditor: View {
     @State private var title = ""
     @State private var notes = ""
     @State private var priority: TaskPriority?
-    @State private var hasDue = false
     @State private var due = Date()
     @State private var status: TaskStatus = .todo
     @State private var type: TaskType = .openEnded
@@ -270,7 +362,7 @@ private struct TaskEditor: View {
     var body: some View {
         Form {
             TextField("タイトル", text: $title)
-                .onSubmit { save(TaskChanges(title: .set(title))) }
+                .onSubmit { saveText() }
             TaskTypePicker(type: $type, label: "タイプ")
                 .onChange(of: type) { old, new in
                     guard old != new, new != task.type else { return }
@@ -284,7 +376,7 @@ private struct TaskEditor: View {
                 }
             TextField("メモ", text: $notes, axis: .vertical)
                 .lineLimit(2...6)
-                .onSubmit { save(TaskChanges(notes: .set(notes.isEmpty ? nil : notes))) }
+                .onSubmit { saveText() }
             Picker("状態", selection: $status) {
                 Text("未着手").tag(TaskStatus.todo)
                 Text("進行中").tag(TaskStatus.doing)
@@ -327,10 +419,21 @@ private struct TaskEditor: View {
                     Button("アーカイブ") { model.archive(task) }
                 }
                 Spacer()
-                Button("メモを保存") { save(TaskChanges(notes: .set(notes.isEmpty ? nil : notes))) }
-                    .disabled(notes == (task.notes ?? ""))
+                if title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text("タイトルを入力してください").foregroundStyle(.red)
+                } else {
+                    Text(textIsDirty ? "保存待ち…" : "自動保存")
+                        .foregroundStyle(.secondary)
+                }
             }
+            .font(.caption)
             .padding(.top, 4)
+            if let error = model.lastError {
+                Text(error).font(.caption).foregroundStyle(.red)
+                if textIsDirty {
+                    Button("保存を再試行") { saveText() }
+                }
+            }
 
             Section("リンク") {
                 LinksSection(task: task, model: model)
@@ -342,7 +445,43 @@ private struct TaskEditor: View {
         }
         .formStyle(.grouped)
         .onAppear { load() }
-        .onChange(of: task) { _, _ in load() }
+        .onChange(of: task) { old, new in
+            // 外部の更新や即時保存で、入力中のタイトル・メモを上書きしない。
+            if title == old.title { title = new.title }
+            if notes == (old.notes ?? "") { notes = new.notes ?? "" }
+            priority = new.priority
+            due = new.dueAt ?? defaultDue
+            status = new.status
+            type = new.type
+        }
+        .task(id: TextDraft(title: title, notes: notes)) {
+            guard textIsDirty else { return }
+            do {
+                try await Task.sleep(for: .milliseconds(600))
+                try Task.checkCancellation()
+                saveText()
+            } catch { /* 新しい入力または画面遷移でキャンセル */ }
+        }
+        .onDisappear { saveText() }
+    }
+
+    private struct TextDraft: Equatable {
+        let title: String
+        let notes: String
+    }
+
+    private var textIsDirty: Bool { title != task.title || notes != (task.notes ?? "") }
+
+    private func saveText() {
+        guard textIsDirty, let current = model.allTasks().first(where: { $0.id == task.id }) else { return }
+        let validTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        var changes = TaskChanges()
+        let titleChanged = !validTitle.isEmpty && title != task.title && title != current.title
+        let notesChanged = notes != (task.notes ?? "") && notes != (current.notes ?? "")
+        guard titleChanged || notesChanged else { return }
+        if titleChanged { changes.title = .set(title) }
+        if notesChanged { changes.notes = .set(notes.isEmpty ? nil : notes) }
+        model.update(current, changes: changes)
     }
 
     private var defaultDue: Date {
@@ -353,7 +492,6 @@ private struct TaskEditor: View {
         title = task.title
         notes = task.notes ?? ""
         priority = task.priority
-        hasDue = task.dueAt != nil
         due = task.dueAt ?? defaultDue
         status = task.status
         type = task.type
