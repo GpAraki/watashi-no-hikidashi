@@ -7,10 +7,16 @@ struct MainWindowView: View {
     static let windowID = "main"
 
     @Bindable var model: AppModel
+    @State private var viewMode: ViewMode = .list
     @State private var scope: Scope = .open
     @State private var aiOnly = false
     @State private var tasks: [TaskItem] = []
     @State private var activity: [ActivityEntry] = []
+
+    enum ViewMode: String, CaseIterable, Identifiable {
+        case list, calendar
+        var id: String { rawValue }
+    }
 
     enum Scope: String, CaseIterable, Identifiable {
         case open, done, archived, all
@@ -35,8 +41,13 @@ struct MainWindowView: View {
 
     var body: some View {
         HSplitView {
-            taskList
-                .frame(minWidth: 260, idealWidth: 320)
+            Group {
+                switch viewMode {
+                case .list: taskList
+                case .calendar: CalendarPane(model: model, tasks: tasks.filter { !$0.isArchived })
+                }
+            }
+            .frame(minWidth: viewMode == .calendar ? 340 : 260, idealWidth: viewMode == .calendar ? 380 : 320)
             VStack(spacing: 0) {
                 if let task = selectedTask {
                     TaskEditor(task: task, model: model)
@@ -51,8 +62,20 @@ struct MainWindowView: View {
             }
             .frame(minWidth: 360)
         }
-        .frame(minWidth: 640, minHeight: 420)
+        .frame(minWidth: 700, minHeight: 480)
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Picker("表示", selection: $viewMode) {
+                    Label("一覧", systemImage: "list.bullet").tag(ViewMode.list)
+                    Label("カレンダー", systemImage: "calendar").tag(ViewMode.calendar)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .help("一覧とカレンダーを切り替える")
+            }
+            ToolbarItem(placement: .automatic) {
+                SprintSettingsMenu(model: model)
+            }
             ToolbarItem(placement: .automatic) {
                 Toggle("ログイン時に起動", isOn: Binding(
                     get: { model.launchesAtLogin },
@@ -81,7 +104,10 @@ struct MainWindowView: View {
     }
 
     private var visibleTasks: [TaskItem] {
-        tasks.filter(scope.includes)
+        tasks.filter(scope.includes).sorted { a, b in
+            if a.type.sortRank != b.type.sortRank { return a.type.sortRank < b.type.sortRank }
+            return (a.dueAt ?? .distantFuture, a.sortOrder) < (b.dueAt ?? .distantFuture, b.sortOrder)
+        }
     }
 
     private var taskList: some View {
@@ -99,16 +125,21 @@ struct MainWindowView: View {
                             model.toggle(task)
                         } label: {
                             Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(task.isDone || task.isArchived ? Color.secondary : task.type.color)
                         }
                         .buttonStyle(.plain)
                         .disabled(task.isArchived)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(task.title)
-                                .strikethrough(task.isDone)
-                                .foregroundStyle(task.isArchived ? .tertiary : (task.isDone ? .secondary : .primary))
                             HStack(spacing: 6) {
+                                Text(task.title)
+                                    .strikethrough(task.isDone)
+                                    .foregroundStyle(task.isArchived ? .tertiary : (task.isDone ? .secondary : .primary))
+                                DueBadge(task: task)
+                            }
+                            HStack(spacing: 6) {
+                                Label(task.type.displayName, systemImage: task.type.systemImage).foregroundStyle(task.type.color)
                                 if let p = task.priority { Text(priorityLabel(p)) }
-                                if let due = task.dueAt { Text(due, style: .date) }
+                                if let due = task.dueAt, task.type != .today { Text(due, style: .date) }
                                 if task.createdBy == .ai {
                                     Text("AI").padding(.horizontal, 4).background(.quaternary, in: Capsule())
                                 }
@@ -239,11 +270,23 @@ private struct TaskEditor: View {
     @State private var hasDue = false
     @State private var due = Date()
     @State private var status: TaskStatus = .todo
+    @State private var type: TaskType = .openEnded
 
     var body: some View {
         Form {
             TextField("タイトル", text: $title)
                 .onSubmit { save(TaskChanges(title: .set(title))) }
+            TaskTypePicker(type: $type, label: "タイプ")
+                .onChange(of: type) { old, new in
+                    guard old != new, new != task.type else { return }
+                    // タイプだけ変えると期限はタイプの既定値になる(当日 → 今日の終わり、スプリント → スプリント終了)。
+                    // 有期限は期限が必要なので、今の期限か今日の 18 時を一緒に渡す。
+                    if new == .deadline {
+                        save(TaskChanges(type: .set(.deadline), dueAt: .set(task.dueAt ?? defaultDue)))
+                    } else {
+                        save(TaskChanges(type: .set(new)))
+                    }
+                }
             TextField("メモ", text: $notes, axis: .vertical)
                 .lineLimit(2...6)
                 .onSubmit { save(TaskChanges(notes: .set(notes.isEmpty ? nil : notes))) }
@@ -266,19 +309,20 @@ private struct TaskEditor: View {
                 guard old != new, new != task.priority else { return }
                 save(TaskChanges(priority: .set(new)))
             }
-            HStack {
-                Toggle("期限", isOn: $hasDue)
-                    .onChange(of: hasDue) { old, new in
-                        guard old != new else { return }
-                        save(TaskChanges(dueAt: .set(new ? due : nil)))
+            if task.type != .openEnded {
+                DatePicker("期限", selection: $due, displayedComponents: [.date, .hourAndMinute])
+                    .onChange(of: due) { old, new in
+                        guard old != new, new != task.dueAt else { return }
+                        save(TaskChanges(dueAt: .set(new)))
                     }
-                if hasDue {
-                    DatePicker("", selection: $due, displayedComponents: [.date, .hourAndMinute])
-                        .labelsHidden()
-                        .onChange(of: due) { old, new in
-                            guard old != new, new != task.dueAt else { return }
-                            save(TaskChanges(dueAt: .set(new)))
+                if task.type == .sprint {
+                    HStack {
+                        Spacer()
+                        Button("次のスプリントへ") {
+                            save(TaskChanges(dueAt: .set(model.sprintSchedule.dueDate(forSprintAfter: task.dueAt ?? .now))))
                         }
+                        .controlSize(.small)
+                    }
                 }
             }
             HStack {
@@ -298,16 +342,61 @@ private struct TaskEditor: View {
         .onChange(of: task) { _, _ in load() }
     }
 
+    private var defaultDue: Date {
+        Calendar.current.date(bySettingHour: 18, minute: 0, second: 0, of: .now) ?? .now
+    }
+
     private func load() {
         title = task.title
         notes = task.notes ?? ""
         priority = task.priority
         hasDue = task.dueAt != nil
-        due = task.dueAt ?? Calendar.current.date(bySettingHour: 18, minute: 0, second: 0, of: .now) ?? .now
+        due = task.dueAt ?? defaultDue
         status = task.status
+        type = task.type
     }
 
     private func save(_ changes: TaskChanges) {
         model.update(task, changes: changes)
+    }
+}
+
+/// スプリントの区切り方(開始曜日と日数)を変えるメニュー。
+private struct SprintSettingsMenu: View {
+    @Bindable var model: AppModel
+
+    private let weekdays: [(Int, String)] = [(1, "日"), (2, "月"), (3, "火"), (4, "水"), (5, "木"), (6, "金"), (7, "土")]
+
+    var body: some View {
+        Menu {
+            Picker("開始曜日", selection: Binding(
+                get: { model.sprintSchedule.startWeekday() },
+                set: { model.setSprintSchedule(SprintSchedule(startWeekday: $0, lengthDays: model.sprintSchedule.lengthDays)) }
+            )) {
+                ForEach(weekdays, id: \.0) { day in
+                    Text("\(day.1)曜日").tag(day.0)
+                }
+            }
+            Picker("長さ", selection: Binding(
+                get: { model.sprintSchedule.lengthDays },
+                set: { model.setSprintSchedule(SprintSchedule(startWeekday: model.sprintSchedule.startWeekday(), lengthDays: $0)) }
+            )) {
+                Text("1 週間").tag(7)
+                Text("2 週間").tag(14)
+                Text("3 週間").tag(21)
+                Text("4 週間").tag(28)
+            }
+            Divider()
+            Text(currentSprint)
+        } label: {
+            Label("スプリント", systemImage: "flag.checkered")
+        }
+        .help("スプリントの区切り方。今のスプリント: \(currentSprint)")
+    }
+
+    private var currentSprint: String {
+        let interval = model.sprintSchedule.interval(containing: .now)
+        let f = Date.FormatStyle().month(.defaultDigits).day().weekday(.abbreviated)
+        return "今のスプリント: \(interval.start.formatted(f)) 〜 \(interval.end.addingTimeInterval(-1).formatted(f))"
     }
 }

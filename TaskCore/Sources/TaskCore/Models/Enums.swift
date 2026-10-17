@@ -7,6 +7,41 @@ public enum TaskStatus: String, Codable, Sendable, CaseIterable, DatabaseValueCo
     case done
 }
 
+/// タスクの「いつまでにやるか」の約束の強さ。期限の扱いと表示の区切りを決める。
+public enum TaskType: String, Codable, Sendable, CaseIterable, DatabaseValueConvertible {
+    /// いつかやる。期限なし。
+    case openEnded = "open_ended"
+    /// 日付までに終える。`due_at` 必須。
+    case deadline
+    /// 今のスプリント内に終える。`due_at` はスプリント終了時刻。
+    case sprint
+    /// 今日中に終える。`due_at` はその日の終わり。
+    case today
+
+    /// 期限を持つタイプか。
+    public var requiresDueDate: Bool { self != .openEnded }
+
+    /// 画面に出す名前。
+    public var displayName: String {
+        switch self {
+        case .openEnded: "いつか"
+        case .deadline: "期限あり"
+        case .sprint: "スプリント"
+        case .today: "今日"
+        }
+    }
+
+    /// 一覧で並べる順。
+    public var sortRank: Int {
+        switch self {
+        case .today: 0
+        case .deadline: 1
+        case .sprint: 2
+        case .openEnded: 3
+        }
+    }
+}
+
 /// 1 が最低、3 が最高。NULL は未設定。
 public enum TaskPriority: Int, Codable, Sendable, CaseIterable, Comparable, DatabaseValueConvertible {
     case low = 1

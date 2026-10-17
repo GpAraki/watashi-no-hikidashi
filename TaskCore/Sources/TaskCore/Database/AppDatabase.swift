@@ -32,6 +32,13 @@ public struct AppDatabase: Sendable {
         try AppDatabase(writer: DatabaseQueue())
     }
 
+    /// テスト用: 指定したマイグレーションまでだけ適用した状態で返す(構造体の init は通さない)。
+    static func inMemory(migratingUpTo target: String) throws -> (any DatabaseWriter) {
+        let queue = try DatabaseQueue()
+        try migrator.migrate(queue, upTo: target)
+        return queue
+    }
+
     public var reader: any DatabaseReader { writer }
 
     // MARK: - Migrations
@@ -79,6 +86,23 @@ public struct AppDatabase: Sendable {
             }
             try db.create(index: "activity_task", on: "activity_log", columns: ["task_id"])
             try db.create(index: "activity_created", on: "activity_log", columns: ["created_at"])
+        }
+
+        // タスクのタイプと、プロセス間で共有する設定(スプリントの区切りなど)。
+        migrator.registerMigration("v2_task_type") { db in
+            try db.alter(table: "task") { t in
+                t.add(column: "type", .text).notNull().defaults(to: TaskType.openEnded.rawValue)
+            }
+            // 既存データ: 期限があれば有期限、なければ無期限。
+            try db.execute(sql: """
+                UPDATE task SET type = CASE WHEN due_at IS NULL THEN 'open_ended' ELSE 'deadline' END
+                """)
+            try db.create(index: "task_type", on: "task", columns: ["type"])
+
+            try db.create(table: "setting") { t in
+                t.primaryKey("key", .text)
+                t.column("value", .text).notNull()
+            }
         }
 
         return migrator
