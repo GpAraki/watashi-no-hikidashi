@@ -8,6 +8,8 @@ struct MainWindowView: View {
 
     @Bindable var model: AppModel
     @State private var viewMode: ViewMode = .list
+    /// 操作履歴は既定で隠し、ツールバーのボタンで出す。選択は記憶する。
+    @AppStorage("mainWindow.showActivity") private var showActivity = false
     @State private var scope: Scope = .open
     @State private var aiOnly = false
     @State private var tasks: [TaskItem] = []
@@ -55,10 +57,12 @@ struct MainWindowView: View {
                 } else {
                     Text("タスクを選ぶと編集できます")
                         .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, minHeight: 160)
+                        .frame(maxWidth: .infinity, minHeight: 160, maxHeight: showActivity ? nil : .infinity)
                 }
-                Divider()
-                activityList
+                if showActivity {
+                    Divider()
+                    activityList
+                }
             }
             .frame(minWidth: 360)
         }
@@ -72,6 +76,14 @@ struct MainWindowView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .help("一覧とカレンダーを切り替える")
+            }
+            ToolbarItem(placement: .automatic) {
+                Toggle(isOn: $showActivity) {
+                    Label("操作履歴", systemImage: "clock.arrow.circlepath")
+                }
+                .toggleStyle(.button)
+                .help(showActivity ? "操作履歴を隠す" : "操作履歴を表示する(AI やウィジェットの操作と取り消し)")
+                .keyboardShortcut("h", modifiers: [.command, .shift])
             }
             ToolbarItem(placement: .automatic) {
                 SprintSettingsMenu(model: model)
