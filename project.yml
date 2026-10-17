@@ -66,6 +66,8 @@ targets:
       path: TaskApp/Info.plist
       properties:
         CFBundleDisplayName: 私の引き出し
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         CFBundleURLTypes:
@@ -97,6 +99,8 @@ targets:
       path: TaskWidget/Info.plist
       properties:
         CFBundleDisplayName: 私の引き出し
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:
