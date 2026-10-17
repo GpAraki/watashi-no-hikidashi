@@ -105,6 +105,22 @@ Claude Desktop は `~/Library/Application Support/Claude/claude_desktop_config.j
 
 書き込み系のツールは `activity_log` に `actor = ai` で記録し、書き込み後に Darwin Notification を投げる。
 
+## 配布用ビルド(社内共有)
+
+Developer ID で署名し、Apple の公証を通した zip を配る。Release 構成では `project.yml` で `get-task-allow` の注入を切り、署名にタイムスタンプを付けている(公証の必須条件)。公証の資格情報は `xcrun notarytool store-credentials hikidashi-notary` でキーチェーンに保存しておく。
+
+```bash
+xcodegen generate
+xcodebuild -project TaskApp.xcodeproj -scheme TaskApp -configuration Release -derivedDataPath build/Release build
+APP=build/Release/Build/Products/Release/TaskApp.app
+ditto -c -k --keepParent "$APP" build/dist/TaskApp-notarize.zip
+xcrun notarytool submit build/dist/TaskApp-notarize.zip --keychain-profile hikidashi-notary --wait
+xcrun stapler staple "$APP"
+ditto -c -k --keepParent "$APP" build/dist/TaskApp-$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist").zip
+```
+
+受け取った側は zip を展開して `TaskApp.app` を `/Applications` に置き、一度起動する。ウィジェットはデスクトップの右クリック →「ウィジェットを編集」から追加する。MCP の接続先は `/Applications/TaskApp.app/Contents/Helpers/TaskMCP`。公証が Invalid になったときは `xcrun notarytool log <id> --keychain-profile hikidashi-notary` で理由が読める。
+
 ## 開発ステップ
 
 - [x] **M1 土台**: TaskCore パッケージとマイグレーション、App Group と署名

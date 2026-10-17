@@ -26,6 +26,11 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     CURRENT_PROJECT_VERSION: 1
     MARKETING_VERSION: 0.1.0
+  configs:
+    Release:
+      # 公証に通すため: デバッグ用 entitlement(get-task-allow)を注入せず、署名に Apple のタイムスタンプを付ける。
+      CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+      OTHER_CODE_SIGN_FLAGS: "--timestamp"
 
 packages:
   TaskCore:
