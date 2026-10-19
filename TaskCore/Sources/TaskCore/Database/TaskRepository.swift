@@ -29,6 +29,8 @@ public struct NewTask: Sendable {
     public var type: TaskType?
     public var priority: TaskPriority?
     public var dueAt: Date?
+    /// 作成と同時に付ける外部リンク。同じトランザクションで登録され、1 つでも不正ならタスクごと作られない。
+    public var links: [NewLink]
 
     public init(
         title: String,
@@ -37,7 +39,8 @@ public struct NewTask: Sendable {
         status: TaskStatus = .todo,
         type: TaskType? = nil,
         priority: TaskPriority? = nil,
-        dueAt: Date? = nil
+        dueAt: Date? = nil,
+        links: [NewLink] = []
     ) {
         self.title = title
         self.notes = notes
@@ -46,6 +49,18 @@ public struct NewTask: Sendable {
         self.type = type
         self.priority = priority
         self.dueAt = dueAt
+        self.links = links
+    }
+}
+
+/// タスクに付ける外部リンクの入力。`url` はスキーム付きの文字列、`label` は省略可。
+public struct NewLink: Sendable, Hashable {
+    public var url: String
+    public var label: String?
+
+    public init(url: String, label: String? = nil) {
+        self.url = url
+        self.label = label
     }
 }
 
@@ -92,6 +107,11 @@ public struct TaskFilter: Sendable {
     public var dueAfter: Date?
     /// この優先度以上のものに絞る。
     public var minimumPriority: TaskPriority?
+    /// この URL と完全一致するリンク(削除済みを除く)を持つものに絞る。前後の空白は無視する。
+    public var linkURL: String?
+    /// この文字列を URL に含むリンク(削除済みを除く)を持つものに絞る。大文字小文字は区別しない。
+    /// Jira の課題キー(PROJ-123)や GitHub の `owner/repo/issues/42` などを渡す。
+    public var linkContains: String?
     public var includeArchived: Bool
     public var limit: Int?
 
@@ -102,6 +122,8 @@ public struct TaskFilter: Sendable {
         dueBefore: Date? = nil,
         dueAfter: Date? = nil,
         minimumPriority: TaskPriority? = nil,
+        linkURL: String? = nil,
+        linkContains: String? = nil,
         includeArchived: Bool = false,
         limit: Int? = nil
     ) {
@@ -111,6 +133,8 @@ public struct TaskFilter: Sendable {
         self.dueBefore = dueBefore
         self.dueAfter = dueAfter
         self.minimumPriority = minimumPriority
+        self.linkURL = linkURL
+        self.linkContains = linkContains
         self.includeArchived = includeArchived
         self.limit = limit
     }
@@ -210,6 +234,19 @@ public final class TaskRepository: Sendable {
             if let minimumPriority = filter.minimumPriority {
                 request = request.filter(TaskItem.Columns.priority >= minimumPriority.rawValue)
             }
+            if let linkURL = filter.linkURL?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty {
+                // addLink と同じ正規化を通してから比べる(例: 末尾の空白、エンコード差)。
+                let normalized = URL(string: linkURL)?.absoluteString ?? linkURL
+                request = request.filter(sql: """
+                    EXISTS (SELECT 1 FROM task_link l WHERE l.task_id = task.id AND l.deleted_at IS NULL AND l.url = ?)
+                    """, arguments: [normalized])
+            }
+            if let fragment = filter.linkContains?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty {
+                let pattern = "%" + Self.escapeForLike(fragment) + "%"
+                request = request.filter(sql: """
+                    EXISTS (SELECT 1 FROM task_link l WHERE l.task_id = task.id AND l.deleted_at IS NULL AND l.url LIKE ? ESCAPE '\\')
+                    """, arguments: [pattern])
+            }
             request = request.order(TaskItem.Columns.sortOrder, TaskItem.Columns.createdAt)
             if let limit = filter.limit {
                 request = request.limit(limit)
@@ -300,6 +337,9 @@ public final class TaskRepository: Sendable {
             ]
             if let dueAt { diff["due_at"] = FieldChange(from: .null, to: JSONValue(dueAt)) }
             try log(db, task: task.id, actor: actor, action: .create, diff: diff, at: now)
+            for link in new.links {
+                _ = try insertLink(db, taskId: task.id, url: link.url, label: link.label, actor: actor, at: now)
+            }
             return task
         }
         return task
@@ -502,27 +542,39 @@ public final class TaskRepository: Sendable {
     /// リンクを追加する。http(s) か、スキーム付きの URL を受け付ける。同じ URL が既にあればそれを返す。
     @discardableResult
     public func addLink(taskId: String, url rawURL: String, label: String? = nil, actor: ChangeActor) throws -> TaskLink {
+        let now = now()
+        return try write { db in
+            _ = try fetchTask(db, id: taskId)
+            return try insertLink(db, taskId: taskId, url: rawURL, label: label, actor: actor, at: now)
+        }
+    }
+
+    /// `addLink` と `createTask(links:)` の共通部分。URL を正規化し、同じ URL があればそれを返し、なければ挿入してログに残す。
+    private func insertLink(_ db: Database, taskId: String, url rawURL: String, label: String?, actor: ChangeActor, at now: Date) throws -> TaskLink {
         let trimmed = rawURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed), url.scheme != nil, !trimmed.isEmpty else {
             throw TaskRepositoryError.invalidURL(rawURL)
         }
         let label = label?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
-        let now = now()
-        return try write { db in
-            _ = try fetchTask(db, id: taskId)
-            if let existing = try TaskLink.filter(TaskLink.Columns.taskId == taskId)
-                .filter(TaskLink.Columns.url == url.absoluteString).filter(TaskLink.Columns.deletedAt == nil).fetchOne(db) {
-                return existing
-            }
-            var link = TaskLink(taskId: taskId, url: url, label: label, createdBy: actor, createdAt: now)
-            try link.insert(db)
-            try log(db, task: taskId, actor: actor, action: .link, diff: [
-                "link_id": FieldChange(from: .null, to: .int(Int(link.id!))),
-                "url": FieldChange(from: .null, to: .string(url.absoluteString)),
-                "label": FieldChange(from: .null, to: JSONValue(label)),
-            ], at: now)
-            return link
+        if let existing = try TaskLink.filter(TaskLink.Columns.taskId == taskId)
+            .filter(TaskLink.Columns.url == url.absoluteString).filter(TaskLink.Columns.deletedAt == nil).fetchOne(db) {
+            return existing
         }
+        var link = TaskLink(taskId: taskId, url: url, label: label, createdBy: actor, createdAt: now)
+        try link.insert(db)
+        try log(db, task: taskId, actor: actor, action: .link, diff: [
+            "link_id": FieldChange(from: .null, to: .int(Int(link.id!))),
+            "url": FieldChange(from: .null, to: .string(url.absoluteString)),
+            "label": FieldChange(from: .null, to: JSONValue(label)),
+        ], at: now)
+        return link
+    }
+
+    /// SQLite の LIKE 用に `%` `_` `\` をエスケープする(ESCAPE '\' と組で使う)。
+    private static func escapeForLike(_ s: String) -> String {
+        s.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "%", with: "\\%")
+            .replacingOccurrences(of: "_", with: "\\_")
     }
 
     /// リンクを論理削除する。

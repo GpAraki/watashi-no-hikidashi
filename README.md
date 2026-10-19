@@ -108,8 +108,8 @@ Claude Desktop は `~/Library/Application Support/Claude/claude_desktop_config.j
 
 | ツール | 内容 |
 | --- | --- |
-| `list_tasks` | status・プロジェクト・期限・優先度で絞り込んで一覧を返す |
-| `create_task` | タスクを追加する(`created_by = ai`) |
+| `list_tasks` | status・プロジェクト・期限・優先度で絞り込んで一覧を返す。`link_url`(完全一致)と `link_contains`(部分一致。Jira の課題キーなど)でリンク URL からも引ける |
+| `create_task` | タスクを追加する(`created_by = ai`)。`links` に URL(または `{url, label}`)の配列を渡すと作成と同時にリンクが付く |
 | `update_task` | タイトル、メモ、優先度、期限などを変更する。null でクリア |
 | `complete_task` | タスクを完了にする |
 | `archive_task` | 論理削除する。物理削除は公開しない |
@@ -124,6 +124,18 @@ Claude Desktop は `~/Library/Application Support/Claude/claude_desktop_config.j
 ### リンク
 
 タスクには複数の外部リンクを付けられる(`task_link` テーブル)。表示名を省略するとホスト名から Notion / Jira / Confluence / GitHub / Figma などを自動で付ける。一覧ウィンドウの編集フォームにチップと追加欄があり、notes に貼られた URL も点線のチップとして検出して「+」で正式なリンクにできる。ポップオーバーの行とウィジェットの行からも開ける(ウィジェットは本体を経由せずブラウザで開く)。`list_tasks` の結果には `links` が含まれる。追加・削除は `activity_log` に残り、取り消せる。
+
+### Jira と一緒に使う
+
+Claude に Jira や GitHub の MCP も繋いでおくと、課題を進めたついでに引き出しの対応タスクを揃えられる。サーバーの instructions に手順(まず `list_tasks` の `link_url` でその URL を持つタスクを探す → あれば status を揃えて `add_comment` → なければ `links` 付きで `create_task` → 同じ URL のタスクを二重に作らない)を書いてあるので、Claude 側には「引き出しのタスクも更新する」と伝われば動く。プロジェクトの CLAUDE.md や Claude Desktop のプロジェクト指示に次のように書いておくと安定する。
+
+```markdown
+- Jira の課題を進めたら、同じ URL をリンクに持つ引き出しのタスク(hikidashi の list_tasks に link_url を渡して探す)を更新し、状況をコメントに書く。
+  見つからなければ links にその URL を入れて create_task する。同じ URL のタスクを二重に作らない。
+- 課題を Done に遷移させたら、引き出しの対応タスクも complete_task で完了にする。
+```
+
+URL の表記が揺れる(クエリ付き、末尾スラッシュなど)ときは `link_contains` に課題キー(`PROJ-123`)や `owner/repo/issues/42` を渡す。部分一致なので `PROJ-1` は `PROJ-12` にも当たる。結果の `links` で同じ課題か確かめる。
 
 ### コメント
 

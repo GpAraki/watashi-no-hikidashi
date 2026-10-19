@@ -15,9 +15,19 @@ struct TaskTools: Sendable {
         - priority は 1(低)〜3(高)の整数。
         - 日時は ISO 8601(例: 2026-10-18T15:00:00+09:00)。日付だけ(2026-10-18)を渡すとその日の 0 時として扱います。
         - 削除は archive_task による論理削除のみです。
-        - add_link でタスクに Notion / Jira / GitHub などの URL を付けられます。参照先があるタスクは notes に URL を書くのではなく add_link を使ってください。list_tasks の結果には links が含まれます。
+        - タスクには外部リンク(Notion / Jira / GitHub などの URL)を複数付けられます。参照先があるタスクは notes に URL を書くのではなく、
+          create_task の links か add_link を使ってください。list_tasks の結果には links が含まれます。
         - add_comment でタスクに状況や判断理由を書き残せます。進捗を伝えたいとき、保留にした理由、次にやることなどはコメントに書いてください(タイトルやメモの上書きではなく)。
         - AI が行った変更はすべて履歴に残り、ユーザーが取り消せます。
+
+        Jira / GitHub などの課題(issue、チケット、PR)を扱ったときの手順:
+        1. まず list_tasks を link_url にその課題の URL を渡して呼び、同じ URL をリンクに持つタスクを探す。
+           URL の表記が揺れそうなら(クエリ付き、末尾スラッシュなど)、link_contains に課題キー(例: PROJ-123)や
+           `owner/repo/issues/42` を渡して部分一致で探し、結果の links を見て同じ課題か確かめる。
+        2. 見つかったら、そのタスクの status を課題の状態に揃え(着手したら doing、終わったら complete_task)、
+           何をしたか・何が残っているかを add_comment で書く。
+        3. 見つからなければ、create_task を links にその課題の URL を入れて呼ぶ(add_link を別に呼ぶ必要はない)。
+        4. 同じ URL のタスクを二重に作らない。作る前に必ず 1 を行う。
         """
 
     // MARK: - ツール定義
@@ -44,7 +54,7 @@ struct TaskTools: Sendable {
     let tools: [Tool] = [
         Tool(
             name: "list_tasks",
-            description: "タスクを一覧する。既定では論理削除されていないものをすべて返す。status・type・プロジェクト・期限・優先度で絞り込める。",
+            description: "タスクを一覧する。既定では論理削除されていないものをすべて返す。status・type・プロジェクト・期限・優先度・リンク URL で絞り込める。Jira / GitHub の課題に対応するタスクを探すときは、link_url(完全一致)か link_contains(部分一致。課題キーなど)を使う。各タスクの links に付いている URL が入る。",
             inputSchema: .object([
                 "type": "object",
                 "properties": .object([
@@ -62,6 +72,14 @@ struct TaskTools: Sendable {
                     "due_before": dateSchema,
                     "due_after": dateSchema,
                     "min_priority": prioritySchema,
+                    "link_url": .object([
+                        "type": "string",
+                        "description": "この URL と完全一致するリンクを持つタスクに絞る(例: https://example.atlassian.net/browse/PROJ-123)。課題を扱うときは最初にこれで探す",
+                    ]),
+                    "link_contains": .object([
+                        "type": "string",
+                        "description": "この文字列をリンク URL に含むタスクに絞る(大文字小文字は区別しない)。Jira の課題キー(PROJ-123)や GitHub の owner/repo/issues/42 など。PROJ-1 は PROJ-12 にも一致するので、結果の links で確かめる",
+                    ]),
                     "include_archived": .object(["type": "boolean", "description": "論理削除済みも含める"]),
                     "limit": .object(["type": "integer", "minimum": 1]),
                 ]),
@@ -70,7 +88,7 @@ struct TaskTools: Sendable {
         ),
         Tool(
             name: "create_task",
-            description: "タスクを追加する(created_by = ai)。",
+            description: "タスクを追加する(created_by = ai)。Jira / GitHub の課題から起こすときは links にその URL を入れ、先に list_tasks の link_url で同じ URL のタスクがないことを確かめる。結果には付けた links が含まれる。",
             inputSchema: .object([
                 "type": "object",
                 "properties": .object([
@@ -81,6 +99,23 @@ struct TaskTools: Sendable {
                     "type": typeSchema,
                     "priority": prioritySchema,
                     "due_at": dateSchema,
+                    "links": .object([
+                        "type": "array",
+                        "description": "作成と同時に付ける外部リンク。URL の文字列、または {url, label} のオブジェクト。1 つでも不正な URL があればタスクは作られない",
+                        "items": .object([
+                            "anyOf": .array([
+                                .object(["type": "string", "description": "https:// から始まる URL"]),
+                                .object([
+                                    "type": "object",
+                                    "properties": .object([
+                                        "url": .object(["type": "string", "description": "https:// から始まる URL"]),
+                                        "label": .object(["type": "string", "description": "表示名(省略可。省略するとサービス名)"]),
+                                    ]),
+                                    "required": .array(["url"]),
+                                ]),
+                            ]),
+                        ]),
+                    ]),
                 ]),
                 "required": .array(["title"]),
             ])
@@ -116,7 +151,7 @@ struct TaskTools: Sendable {
         ),
         Tool(
             name: "complete_task",
-            description: "タスクを完了(done)にする。",
+            description: "タスクを完了(done)にする。対応する Jira / GitHub の課題を閉じたときも、list_tasks の link_url で見つけたタスクをこれで完了にする。",
             inputSchema: .object([
                 "type": "object",
                 "properties": .object(["id": idSchema]),
@@ -136,7 +171,7 @@ struct TaskTools: Sendable {
         ),
         Tool(
             name: "add_comment",
-            description: "タスクにコメントを追加する(author = ai)。進捗、保留の理由、次の一手などの状況を書く。ユーザーはアプリで読んで返信・取り消しができる。",
+            description: "タスクにコメントを追加する(author = ai)。進捗、保留の理由、次の一手などの状況を書く。Jira / GitHub の課題を進めたら、対応するタスク(list_tasks の link_url で探す)に何をしたかをここに書く。ユーザーはアプリで読んで返信・取り消しができる。",
             inputSchema: .object([
                 "type": "object",
                 "properties": .object([
@@ -158,7 +193,7 @@ struct TaskTools: Sendable {
         ),
         Tool(
             name: "add_link",
-            description: "タスクに外部リンク(Notion、Jira、GitHub、Figma など)を付ける。label を省略するとサービス名が表示名になる。同じ URL は二重に登録されない。",
+            description: "既存のタスクに外部リンク(Notion、Jira、GitHub、Figma など)を付ける。label を省略するとサービス名が表示名になる。同じ URL は二重に登録されない。新しく作るタスクには create_task の links を使う。",
             inputSchema: .object([
                 "type": "object",
                 "properties": .object([
@@ -202,6 +237,8 @@ struct TaskTools: Sendable {
                     dueBefore: try args.date("due_before"),
                     dueAfter: try args.date("due_after"),
                     minimumPriority: try args.priority("min_priority"),
+                    linkURL: try args.string("link_url"),
+                    linkContains: try args.string("link_contains"),
                     includeArchived: try args.bool("include_archived") ?? false,
                     limit: try args.int("limit")
                 )
@@ -217,9 +254,11 @@ struct TaskTools: Sendable {
                     status: try args.status("status") ?? .todo,
                     type: try args.type("type"),
                     priority: try args.priority("priority"),
-                    dueAt: try args.date("due_at")
+                    dueAt: try args.date("due_at"),
+                    links: try args.links("links")
                 )
-                return try result(try repository.createTask(new, actor: .ai))
+                let task = try repository.createTask(new, actor: .ai)
+                return try result(TaskWithLinks(task: task, links: try repository.links(taskId: task.id)))
 
             case "update_task":
                 let id = try args.required("id", args.string)
@@ -394,6 +433,20 @@ extension [String: Value] {
             throw ToolArgumentError(message: "'\(key)' は 1〜3 の整数です")
         }
         return p
+    }
+
+    /// `links` の要素は URL の文字列か `{url, label}` のオブジェクト。
+    func links(_ key: String) throws -> [NewLink] {
+        guard let raw = self[key], !raw.isNull else { return [] }
+        let items: [Value] = raw.arrayValue ?? [raw]
+        return try items.map { item in
+            if let url = item.stringValue { return NewLink(url: url) }
+            guard let object = item.objectValue else {
+                throw ToolArgumentError(message: "'\(key)' の要素は URL の文字列か {url, label} のオブジェクトです")
+            }
+            let url = try object.required("url", object.string)
+            return NewLink(url: url, label: try object.string("label"))
+        }
     }
 
     func date(_ key: String) throws -> Date? {
