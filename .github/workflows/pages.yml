@@ -1,0 +1,78 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate update feed
+        shell: python
+        run: |
+          import json
+          import pathlib
+          import re
+          from urllib.parse import urlparse
+
+          feed = json.loads(pathlib.Path("site/latest.json").read_text(encoding="utf-8"))
+          required = {"version", "publishedAt", "downloadUrl", "sha256", "minimumOs", "releaseNotesUrl"}
+          if set(feed) != required:
+              raise SystemExit(f"latest.json fields differ: expected={sorted(required)}, actual={sorted(feed)}")
+
+          version = feed["version"]
+          if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+              raise SystemExit("version must be MAJOR.MINOR.PATCH")
+          if not re.fullmatch(r"[0-9a-f]{64}", feed["sha256"]):
+              raise SystemExit("sha256 must be 64 lowercase hexadecimal characters")
+          if not re.fullmatch(r"\d+\.\d+(?:\.\d+)?", feed["minimumOs"]):
+              raise SystemExit("minimumOs is invalid")
+          if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", feed["publishedAt"]):
+              raise SystemExit("publishedAt must be an ISO 8601 UTC timestamp")
+
+          repo = "GpAraki/watashi-no-hikidashi"
+          for key in ("downloadUrl", "releaseNotesUrl"):
+              parsed = urlparse(feed[key])
+              if parsed.scheme != "https" or parsed.netloc != "github.com" or not parsed.path.startswith(f"/{repo}/releases/"):
+                  raise SystemExit(f"{key} must point to the official GitHub Releases")
+
+          tag = f"v{version}"
+          if feed["downloadUrl"] != f"https://github.com/{repo}/releases/download/{tag}/Hikidashi-{version}.zip":
+              raise SystemExit("downloadUrl does not match version")
+          if feed["releaseNotesUrl"] != f"https://github.com/{repo}/releases/tag/{tag}":
+              raise SystemExit("releaseNotesUrl does not match version")
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

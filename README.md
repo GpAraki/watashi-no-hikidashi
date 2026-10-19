@@ -4,6 +4,8 @@ A macOS task manager that lives on your desktop. View tasks in a widget, and let
 
 macOS のデスクトップウィジェットでタスクを常時表示し、Claude Desktop や Claude Code から MCP 経由でタスクを読み書きできる個人用タスク管理アプリ。全コンポーネントを Swift で実装し、対象は macOS 14 Sonoma 以降。
 
+**ダウンロード**: [https://gparaki.github.io/watashi-no-hikidashi/](https://gparaki.github.io/watashi-no-hikidashi/)(署名・公証済みの zip。[Releases](https://github.com/GpAraki/watashi-no-hikidashi/releases) からも取得できる)
+
 ## 構成
 
 本体・ウィジェット・MCP サーバーの 3 プロセスが、共有パッケージ TaskCore を通じて同じ SQLite(App Group の共有コンテナ内)を読み書きする。
@@ -135,7 +137,7 @@ Claude Desktop は `~/Library/Application Support/Claude/claude_desktop_config.j
 swift scripts/make-app-icon.swift TaskApp/Assets.xcassets/AppIcon.appiconset
 ```
 
-## 配布用ビルド(社内共有)
+## 配布用ビルド
 
 Developer ID で署名し、Apple の公証を通した zip を配る。Release 構成では `project.yml` で `get-task-allow` の注入を切り、署名にタイムスタンプを付けている(公証の必須条件)。公証の資格情報は `xcrun notarytool store-credentials hikidashi-notary` でキーチェーンに保存しておく。
 
@@ -155,6 +157,10 @@ ditto -c -k --keepParent "$APP" build/dist/Hikidashi-$(/usr/libexec/PlistBuddy -
 pluginkit -a /Applications/Hikidashi.app/Contents/PlugIns/TaskWidget.appex && killall chronod
 ```
 ウィジェットはデスクトップの右クリック →「ウィジェットを編集」から追加する。MCP の接続先は `/Applications/Hikidashi.app/Contents/Helpers/TaskMCP`。公証が Invalid になったときは `xcrun notarytool log <id> --keychain-profile hikidashi-notary` で理由が読める。
+
+## 紹介サイト(GitHub Pages)
+
+`site/` が [https://gparaki.github.io/watashi-no-hikidashi/](https://gparaki.github.io/watashi-no-hikidashi/) の中身。main の `site/` が変わると `.github/workflows/pages.yml` がデプロイする。新しいバージョンを出すときは、Releases に `Hikidashi-<version>.zip` を載せたあと `site/latest.json` の version / publishedAt / sha256 を更新する(ページのダウンロードボタンはこのファイルを読む)。
 
 ## 開発ステップ
 
