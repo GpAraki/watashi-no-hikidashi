@@ -1,0 +1,272 @@
+/*
+ * 私の引き出し — サイト用デザイントークン
+ *
+ * 紹介サイトの配色・タイポグラフィをまとめた基盤トークン。
+ * go-paddock の紹介サイトと同じトークンを使っています。
+ *
+ * Fonts: BIZ UDPGothic (本文 / "pro"), BIZ UDGothic (等幅 / "mono"),
+ *        Material Symbols Rounded (アイコン)。
+ */
+
+/* ==============================================================
+ * 1. PRIMITIVE TOKENS
+ * ============================================================== */
+:root {
+  /* --- Brand / hue scales ---------------------------------- */
+  --color-blue-50: #eff5ff;
+  --color-blue-100: #dbe8fe;
+  --color-blue-200: #bcd3fd;
+  --color-blue-300: #93b7fa;
+  --color-blue-400: #6091f5;
+  --color-blue-500: #2563eb;
+  --color-blue-600: #1d4fd0;
+  --color-blue-700: #1a40aa;
+  --color-blue-800: #1a388a;
+  --color-blue-900: #1a3271;
+
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-200: #fecaca;
+  --color-red-300: #fca5a5;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-red-800: #991b1b;
+  --color-red-900: #7f1d1d;
+
+  --color-orange-50: #fff7ed;
+  --color-orange-100: #ffedd5;
+  --color-orange-200: #fed7aa;
+  --color-orange-300: #fdba74;
+  --color-orange-400: #fb923c;
+  --color-orange-500: #f97316;
+  --color-orange-600: #d97706;
+  --color-orange-700: #c2410c;
+  --color-orange-800: #9a3412;
+  --color-orange-900: #7c2d12;
+
+  --color-yellow-50: #fefce8;
+  --color-yellow-100: #fef3c7;
+  --color-yellow-200: #fde68a;
+  --color-yellow-300: #fcd34d;
+  --color-yellow-400: #fbbf24;
+  --color-yellow-500: #eab308;
+  --color-yellow-600: #ca8a04;
+  --color-yellow-700: #a16207;
+  --color-yellow-800: #854d0e;
+  --color-yellow-900: #713f12;
+
+  --color-green-50: #f0fdf4;
+  --color-green-100: #dcfce7;
+  --color-green-200: #bbf7d0;
+  --color-green-300: #86efac;
+  --color-green-400: #4ade80;
+  --color-green-500: #16a34a;
+  --color-green-600: #15803d;
+  --color-green-700: #166534;
+  --color-green-800: #14532d;
+  --color-green-900: #113c22;
+
+  --color-purple-50: #faf5ff;
+  --color-purple-100: #f3e8ff;
+  --color-purple-200: #e9d5ff;
+  --color-purple-300: #d8b4fe;
+  --color-purple-400: #c084fc;
+  --color-purple-500: #a855f7;
+  --color-purple-600: #7c3aed;
+  --color-purple-700: #6b21d8;
+  --color-purple-800: #581cb0;
+  --color-purple-900: #481a8f;
+
+  --color-pink-50: #fdf2f8;
+  --color-pink-100: #fce7f3;
+  --color-pink-200: #fbcfe8;
+  --color-pink-300: #f9a8d4;
+  --color-pink-400: #f472b6;
+  --color-pink-500: #ec4899;
+  --color-pink-600: #db2777;
+  --color-pink-700: #be185d;
+  --color-pink-800: #9d174d;
+  --color-pink-900: #831843;
+
+  /* --- Neutral gray scale --------------------------------- */
+  --color-gray-50: #f6f8fa;
+  --color-gray-100: #eef1f6;
+  --color-gray-200: #d7dde6;
+  --color-gray-300: #b7c0cd;
+  --color-gray-400: #8f9aab;
+  --color-gray-500: #6b7482;
+  --color-gray-600: #545d6b;
+  --color-gray-700: #3f4754;
+  --color-gray-800: #2b323d;
+  --color-gray-900: #1f2733;
+
+  /* --- Black & white + alpha overlays --------------------- */
+  --color-black: #000000;
+  --color-white: #ffffff;
+
+  --color-black-alpha-50: rgba(0, 0, 0, 0.051);
+  --color-black-alpha-100: rgba(0, 0, 0, 0.102);
+  --color-black-alpha-200: rgba(0, 0, 0, 0.2);
+  --color-black-alpha-300: rgba(0, 0, 0, 0.302);
+  --color-black-alpha-400: rgba(0, 0, 0, 0.4);
+  --color-black-alpha-500: rgba(0, 0, 0, 0.502);
+  --color-black-alpha-600: rgba(0, 0, 0, 0.6);
+  --color-black-alpha-700: rgba(0, 0, 0, 0.702);
+  --color-black-alpha-800: rgba(0, 0, 0, 0.8);
+  --color-black-alpha-900: rgba(0, 0, 0, 0.902);
+
+  --color-white-alpha-50: rgba(255, 255, 255, 0.051);
+  --color-white-alpha-100: rgba(255, 255, 255, 0.102);
+  --color-white-alpha-200: rgba(255, 255, 255, 0.2);
+  --color-white-alpha-300: rgba(255, 255, 255, 0.302);
+  --color-white-alpha-400: rgba(255, 255, 255, 0.4);
+  --color-white-alpha-500: rgba(255, 255, 255, 0.502);
+  --color-white-alpha-600: rgba(255, 255, 255, 0.6);
+  --color-white-alpha-700: rgba(255, 255, 255, 0.702);
+  --color-white-alpha-800: rgba(255, 255, 255, 0.8);
+  --color-white-alpha-900: rgba(255, 255, 255, 0.902);
+
+  --color-ring-normal: #2f6de0;
+
+  /* --- Radius primitives ---------------------------------- */
+  --radius-none: 0;
+  --radius-xs: 0.125rem;   /*  2px */
+  --radius-sm: 0.25rem;    /*  4px */
+  --radius-md: 0.375rem;   /*  6px */
+  --radius-lg: 0.5rem;     /*  8px */
+  --radius-xl: 0.75rem;    /* 12px */
+  --radius-2xl: 1rem;      /* 16px */
+  --radius-3xl: 1.5rem;    /* 24px */
+  --radius-full: 9999px;
+
+  /* --- Typography primitives ------------------------------ */
+  --font-family-pro: 'BIZ UDPGothic', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-family-mono: 'BIZ UDGothic', 'SFMono-Regular', Menlo, Consolas, monospace;
+  --font-family-icon: 'Material Symbols Rounded';
+
+  --font-size-12: 0.75rem;
+  --font-size-14: 0.875rem;
+  --font-size-16: 1rem;
+  --font-size-18: 1.125rem;
+  --font-size-20: 1.25rem;
+  --font-size-24: 1.5rem;
+  --font-size-28: 1.75rem;
+  --font-size-32: 2rem;
+  --font-size-36: 2.25rem;
+  --font-size-42: 2.625rem;
+  --font-size-48: 3rem;
+  --font-size-54: 3.375rem;
+
+  --line-height-20: 1.25rem;
+  --line-height-24: 1.5rem;
+  --line-height-28: 1.75rem;
+  --line-height-32: 2rem;
+  --line-height-36: 2.25rem;
+  --line-height-44: 2.75rem;
+  --line-height-48: 3rem;
+  --line-height-56: 3.5rem;
+  --line-height-64: 4rem;
+  --line-height-72: 4.5rem;
+  --line-height-84: 5.25rem;
+  --line-height-leading-none: 1;
+
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-widest: 0.1em;
+
+  --font-weight-char-normal: 400;
+  --font-weight-char-bold: 700;
+
+  /* --- Shadow primitives ---------------------------------- */
+  --shadow-none: 0 0 0 0 var(--color-black);
+  --shadow-2xs: 0 1px 0 0 var(--color-black-alpha-50);
+  --shadow-xs:  0 1px 2px 0 var(--color-black-alpha-50);
+  --shadow-sm:  0 1px 3px 0 var(--color-black-alpha-100), 0 1px 2px -1px var(--color-black-alpha-100);
+  --shadow-md:  0 4px 6px -1px var(--color-black-alpha-100), 0 2px 4px -2px var(--color-black-alpha-100);
+  --shadow-lg:  0 10px 15px -3px var(--color-black-alpha-100), 0 4px 6px -4px var(--color-black-alpha-100);
+}
+
+/* ==============================================================
+ * 2. SEMANTIC TOKENS
+ * Primary は index.html のアクセント切替でも上書きできます（既定: blue）。
+ * ============================================================== */
+:root {
+  /* Neutral = gray */
+  --color-neutral-50:  var(--color-gray-50);
+  --color-neutral-100: var(--color-gray-100);
+  --color-neutral-200: var(--color-gray-200);
+  --color-neutral-300: var(--color-gray-300);
+  --color-neutral-400: var(--color-gray-400);
+  --color-neutral-500: var(--color-gray-500);
+  --color-neutral-600: var(--color-gray-600);
+  --color-neutral-700: var(--color-gray-700);
+  --color-neutral-800: var(--color-gray-800);
+  --color-neutral-900: var(--color-gray-900);
+
+  /* Primary = blue (切替可能) */
+  --color-primary-50:  var(--color-blue-50);
+  --color-primary-100: var(--color-blue-100);
+  --color-primary-200: var(--color-blue-200);
+  --color-primary-300: var(--color-blue-300);
+  --color-primary-400: var(--color-blue-400);
+  --color-primary-500: var(--color-blue-500);
+  --color-primary-600: var(--color-blue-600);
+  --color-primary-700: var(--color-blue-700);
+  --color-primary-800: var(--color-blue-800);
+  --color-primary-900: var(--color-blue-900);
+
+  /* Semantic status families */
+  --color-info-500: var(--color-blue-500);
+  --color-info-100: var(--color-blue-100);
+  --color-info-600: var(--color-blue-600);
+  --color-success-500: var(--color-green-500);
+  --color-success-100: var(--color-green-100);
+  --color-success-600: var(--color-green-600);
+  --color-warning-500: var(--color-yellow-500);
+  --color-warning-100: var(--color-yellow-100);
+  --color-warning-600: var(--color-yellow-600);
+  --color-negative-500: var(--color-red-500);
+  --color-negative-100: var(--color-red-100);
+  --color-negative-600: var(--color-red-600);
+
+  /* Foreground / text ramp */
+  --color-text-high:        var(--color-neutral-900); /* primary body */
+  --color-text-middle:      var(--color-neutral-700); /* secondary body */
+  --color-text-low:         var(--color-neutral-500); /* captions, meta */
+  --color-text-placeholder: var(--color-neutral-500);
+  --color-text-disabled:    var(--color-neutral-300);
+
+  /* Dividers */
+  --color-divider-low:    var(--color-neutral-100);
+  --color-divider-middle: var(--color-neutral-200);
+  --color-divider-high:   var(--color-neutral-300);
+
+  --color-skeleton-fill: var(--color-neutral-200);
+
+  /* Semantic radii — named by intent */
+  --radius-divide:    var(--radius-none);  /* 0   — dividers */
+  --radius-minimum:   var(--radius-xs);    /* 2   — subtle containers */
+  --radius-notice:    var(--radius-sm);    /* 4   — tags, badges text */
+  --radius-action:    var(--radius-md);    /* 6   — buttons, inputs */
+  --radius-halfModal: var(--radius-lg);    /* 8   */
+  --radius-modal:     var(--radius-xl);    /* 12  — modals */
+  --radius-round:     var(--radius-full);  /* pill badge, avatar */
+
+  /* Semantic elevation */
+  --shadow-base:   var(--shadow-none);
+  --shadow-flat:   var(--shadow-2xs);
+  --shadow-raise:  var(--shadow-xs);   /* default for buttons, inputs */
+  --shadow-stick:  var(--shadow-sm);
+  --shadow-float:  var(--shadow-md);
+  --shadow-popout: var(--shadow-lg);
+}
+
+/* ==============================================================
+ * 3. BASE TYPOGRAPHY
+ * ============================================================== */
+html { font-family: var(--font-family-pro); color: var(--color-text-high); }
+body { font-family: var(--font-family-pro); }
+*, ::before, ::after { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }

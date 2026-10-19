@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>私の引き出し | デスクトップに、今日やることを。</title>
+  <meta name="description" content="私の引き出しは、macOS のデスクトップウィジェットでタスクを常に見られる個人用タスク管理アプリ。Claude から MCP 経由でタスクを読み書きでき、データはローカルの SQLite に置かれます。">
+  <meta property="og:title" content="私の引き出し | デスクトップに、今日やることを。">
+  <meta property="og:description" content="macOS のデスクトップウィジェットでタスクを常に見られる個人用タスク管理アプリ。Claude から MCP 経由で読み書きできます。">
+  <meta property="og:image" content="https://gparaki.github.io/watashi-no-hikidashi/assets/main-window.png">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=BIZ+UDGothic:wght@400;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,0,0">
+  <link rel="stylesheet" href="styles/colors_and_type.css">
+  <link rel="stylesheet" href="styles/site.css?v=20261019a">
+  <link rel="icon" href="assets/favicon.png" type="image/png">
+</head>
+<body>
+<div class="gp-root" style="--color-primary-50:var(--color-blue-50);--color-primary-100:var(--color-blue-100);--color-primary-200:var(--color-blue-200);--color-primary-300:var(--color-blue-300);--color-primary-400:var(--color-blue-400);--color-primary-500:var(--color-blue-500);--color-primary-600:var(--color-blue-600);--color-primary-700:var(--color-blue-700);--color-primary-800:var(--color-blue-800);--color-primary-900:var(--color-blue-900)">
+  <header class="gp-site-header">
+    <a href="#top" class="gp-logo" aria-label="私の引き出し トップへ">
+      <img src="assets/app-icon.png" alt="" width="512" height="512"><span>私の引き出し</span>
+    </a>
+    <nav class="gp-site-nav" aria-label="サイト内ナビゲーション">
+      <a href="#product" class="gp-head-link">できること</a>
+      <a href="#widget" class="gp-head-link">ウィジェット</a>
+      <a href="#ai" class="gp-head-link">AI 連携</a>
+      <a href="#download" class="gp-head-link">ダウンロード</a>
+      <a href="https://github.com/GpAraki/watashi-no-hikidashi/releases/download/v0.1.0/Hikidashi-0.1.0.zip" class="gp-btn gp-btn-primary gp-nav-cta" data-download-link>
+        <span class="material-symbols-rounded" aria-hidden="true">download</span>ダウンロード
+      </a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="top" class="gp-hero" aria-labelledby="hero-title">
+      <div class="gp-hero-inner">
+        <div class="gp-hero-copy">
+          <p class="gp-eyebrow"><span></span>macOS task manager on your desktop</p>
+          <h1 id="hero-title" class="gp-hero-title">デスクトップに、<br>今日やることを。<em>いつも。</em></h1>
+          <p class="gp-hero-lede">ウィジェットが「今日」「期限あり」「スプリント」を常に見せ、メニューバーからすぐ足せる。Claude からは MCP 経由でタスクを読み書き。データはあなたの Mac のローカルに置かれます。</p>
+          <div class="gp-hero-actions">
+            <a href="https://github.com/GpAraki/watashi-no-hikidashi/releases/download/v0.1.0/Hikidashi-0.1.0.zip" class="gp-btn gp-btn-primary gp-btn-large" data-download-link>
+              <span class="material-symbols-rounded" aria-hidden="true">download</span>macOS 版をダウンロード
+            </a>
+            <a href="https://github.com/GpAraki/watashi-no-hikidashi" target="_blank" rel="noopener" class="gp-btn gp-btn-ghost gp-btn-large">
+              <span class="material-symbols-rounded" aria-hidden="true">code</span>GitHub で見る
+            </a>
+          </div>
+          <ul class="gp-trust-list" aria-label="利用条件">
+            <li><span class="material-symbols-rounded" aria-hidden="true">lock</span>ローカル完結(SQLite)</li>
+            <li><span class="material-symbols-rounded" aria-hidden="true">cloud_off</span>外部送信なし</li>
+            <li><span class="material-symbols-rounded" aria-hidden="true">laptop_mac</span>macOS 14 以降</li>
+            <li><span class="material-symbols-rounded" aria-hidden="true">verified</span>Developer ID 署名・公証済み</li>
+          </ul>
+        </div>
+
+        <figure class="gp-hero-product">
+          <div class="gp-window-bar" aria-hidden="true"><span></span><span></span><span></span><strong>私の引き出し</strong></div>
+          <img src="assets/main-window.png" width="2036" height="1278" alt="私の引き出しの一覧ウィンドウ。左に未完了タスクの一覧、右に選択中タスクの編集フォーム、リンク、コメントを表示する。">
+          <figcaption class="gp-callout gp-callout-widget"><i></i><span>ウィジェットと同じデータ</span></figcaption>
+          <figcaption class="gp-callout gp-callout-type"><i></i><span>タイプを選ぶと期限が決まる</span></figcaption>
+          <figcaption class="gp-callout gp-callout-comment"><i></i><span>AI の報告がコメントで届く</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <div class="gp-proof" aria-label="私の引き出しの特長">
+      <div><span class="material-symbols-rounded" aria-hidden="true">widgets</span><strong>見る</strong><small>デスクトップウィジェットで常時表示</small></div>
+      <div><span class="material-symbols-rounded" aria-hidden="true">add_task</span><strong>足す</strong><small>メニューバー、⌘N、右クリック</small></div>
+      <div><span class="material-symbols-rounded" aria-hidden="true">smart_toy</span><strong>任せる</strong><small>Claude が MCP で読み書き</small></div>
+    </div>
+
+    <section id="product" class="gp-section">
+      <div class="gp-section-inner">
+        <div class="gp-section-head">
+          <div>
+            <p class="gp-label">One drawer</p>
+            <h2 class="gp-heading">入れる、見える、<br>片づく。</h2>
+          </div>
+          <p class="gp-text">タスクを入れる場所はひとつ。メニューバーのポップオーバー、一覧ウィンドウ、ウィジェット、そして Claude が、同じ引き出しを開け閉めします。</p>
+        </div>
+
+        <div class="gp-story-grid">
+          <article class="gp-story-card">
+            <span class="gp-story-number">01</span>
+            <div class="gp-story-icon"><span class="material-symbols-rounded" aria-hidden="true">add_circle</span></div>
+            <h3>思いついたら、すぐ入れる</h3>
+            <p>メニューバーのクイック入力、⌘N の追加シート、どのアプリからでもテキストを選択して右クリック →「引き出しにタスクを追加」。1 行目がタイトル、残りがメモになります。</p>
+          </article>
+          <article class="gp-story-card">
+            <span class="gp-story-number">02</span>
+            <div class="gp-story-icon"><span class="material-symbols-rounded" aria-hidden="true">event_available</span></div>
+            <h3>タイプを選ぶと、期限が決まる</h3>
+            <p>「今日」は今日の終わり、「スプリント」は今のスプリントの最終日、「期限あり」は日付指定、「いつか」は期限なし。約束の強さで分けるから、並べ替えに迷いません。</p>
+          </article>
+          <article class="gp-story-card">
+            <span class="gp-story-number">03</span>
+            <div class="gp-story-icon"><span class="material-symbols-rounded" aria-hidden="true">history</span></div>
+            <h3>誰が何をしたか、残る</h3>
+            <p>人・ウィジェット・AI のどれが変更したかを操作履歴に記録。AI が勝手に変えたものも一覧で確認でき、その場で取り消せます。削除はすべて論理削除です。</p>
+          </article>
+        </div>
+
+        <div class="gp-product-stage">
+          <div class="gp-product-caption">
+            <p class="gp-label">Main window</p>
+            <h3>一覧と編集を、ひとつの画面で。</h3>
+            <ul>
+              <li><span>1</span><strong>一覧と検索</strong>未完了・完了済み・アーカイブを切り替え、タイトルとメモで検索</li>
+              <li><span>2</span><strong>自動保存の編集フォーム</strong>タイプ、状態、優先度、期限。入力が止まれば保存</li>
+              <li><span>3</span><strong>リンクとコメント</strong>Notion や Jira へのリンクをまとめ、AI との会話を残す</li>
+            </ul>
+          </div>
+          <figure class="gp-product-screen">
+            <img src="assets/main-window.png" width="2036" height="1278" loading="lazy" alt="私の引き出しの一覧ウィンドウ全体。">
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section id="widget" class="gp-section gp-section-muted" aria-labelledby="widget-title">
+      <div class="gp-section-inner">
+        <div class="gp-section-head">
+          <div>
+            <p class="gp-label">Desktop widget</p>
+            <h2 id="widget-title" class="gp-heading">3 つのサイズ、<br>同じ引き出し。</h2>
+          </div>
+          <p class="gp-text">今日の進捗と期限を確認し、その場で完了チェック。行の丸で完了、タイトルで本体の該当タスクを開きます。本体が書き込めば数百ミリ秒で描き直されます。</p>
+        </div>
+        <figure class="gp-widget-shell">
+          <img src="assets/widgets-overview.png" width="2080" height="1600" loading="lazy" alt="small・medium・large の 3 サイズのウィジェット。今日の進捗バー、期限ありのバッジ、スプリントの残り日数を表示する。">
+        </figure>
+        <div class="gp-widget-notes">
+          <div><small>SMALL</small><strong>今日の進捗と次のタスク</strong><p>進捗バーと次にやること。期限ありのタスクには日付を添えます。</p></div>
+          <div><small>MEDIUM</small><strong>今日と近い期限</strong><p>今日のタスクと近い期限の未完了を 3 件まで。収まらない分は「すべて表示」から。</p></div>
+          <div><small>LARGE</small><strong>スプリントを含めた見通し</strong><p>今日・期限あり・スプリントの全セクションを 7 件まで。「いつか」は件数だけ。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="ai" class="gp-section" aria-labelledby="ai-title">
+      <div class="gp-section-inner">
+        <div class="gp-section-head">
+          <div>
+            <p class="gp-label">Works with Claude</p>
+            <h2 id="ai-title" class="gp-heading">AI に任せても、<br>手綱はあなたの手に。</h2>
+          </div>
+          <p class="gp-text">アプリの中に LLM はありません。MCP サーバーとしてタスク操作を公開し、Claude Code や Claude Desktop から呼び出します。</p>
+        </div>
+        <div class="gp-value-grid">
+          <article class="gp-value-card">
+            <div class="gp-value-head"><span class="material-symbols-rounded" aria-hidden="true">terminal</span><small>MCP TOOLS</small></div>
+            <h3>読む、足す、片づける</h3>
+            <p>一覧、追加、更新、完了、アーカイブ、プロジェクト一覧、コメント。会議の議事録から「今日やること」を起こす、といった使い方ができます。</p>
+            <ul><li>list_tasks</li><li>create_task</li><li>update_task</li><li>complete_task</li><li>archive_task</li></ul>
+          </article>
+          <article class="gp-value-card">
+            <div class="gp-value-head"><span class="material-symbols-rounded" aria-hidden="true">forum</span><small>COMMENTS</small></div>
+            <h3>状況はコメントで届く</h3>
+            <p>AI が進めた作業の報告は、タスクのコメントとして残ります。本体のスレッドで読み、必要なら返事を書けます。</p>
+            <ul><li>人と AI の両方が書ける</li><li>タスクごとのスレッド</li><li>削除も取り消せる</li></ul>
+          </article>
+          <article class="gp-value-card gp-value-card-featured">
+            <div class="gp-value-head"><span class="material-symbols-rounded" aria-hidden="true">undo</span><small>UNDO</small></div>
+            <h3>AI の変更は、ぜんぶ取り消せる</h3>
+            <p>AI が作ったタスクには印が付き、変更は差分つきで操作履歴に残ります。やりすぎたら履歴から戻す。物理削除は AI に公開していません。</p>
+            <ul><li>actor = ai の記録</li><li>差分つきの履歴</li><li><strong>ワンクリックで取り消し</strong></li></ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="download" class="gp-section gp-start-section">
+      <div class="gp-section-inner gp-start-grid">
+        <div class="gp-start-copy">
+          <p class="gp-label">Download</p>
+          <h2 class="gp-heading">展開して、Applications に置くだけ。</h2>
+          <p class="gp-text">Developer ID で署名し、Apple の公証を通した zip を配布しています。Apple Silicon と Intel の両方で動きます。</p>
+          <div class="gp-start-actions">
+            <a href="https://github.com/GpAraki/watashi-no-hikidashi/releases/download/v0.1.0/Hikidashi-0.1.0.zip" class="gp-btn gp-btn-primary gp-btn-large" data-download-link><span class="material-symbols-rounded" aria-hidden="true">download</span>Hikidashi <span data-version>0.1.0</span> をダウンロード</a>
+            <a href="https://github.com/GpAraki/watashi-no-hikidashi/releases" target="_blank" rel="noopener" class="gp-btn gp-btn-outline gp-btn-large"><span class="material-symbols-rounded" aria-hidden="true">history</span>すべてのリリース</a>
+          </div>
+          <p class="gp-download-meta">SHA-256: <code data-sha256>リリースページを参照</code></p>
+          <ol class="gp-steps">
+            <li><span>zip を展開し、<code>Hikidashi.app</code> を <code>/Applications</code> に移動する</span></li>
+            <li><span>一度起動する。メニューバーにトレイのアイコンが出る</span></li>
+            <li><span>デスクトップを右クリック →「ウィジェットを編集」→「私の引き出し」を置く</span></li>
+          </ol>
+          <div class="gp-runtime-list" aria-label="対応状況">
+            <span><strong>macOS</strong> 14 Sonoma 以降</span>
+            <span><strong>CPU</strong> Apple Silicon / Intel</span>
+            <span><strong>Data</strong> ローカル SQLite</span>
+            <span><strong>License</strong> MIT</span>
+          </div>
+        </div>
+        <div class="gp-terminal" aria-label="Claude に接続するコマンド">
+          <div class="gp-terminal-bar"><span></span><span></span><span></span><small>Claude に接続する</small></div>
+          <pre class="mono"><em># Claude Code</em>
+<span>$</span> claude mcp add hikidashi -- \
+    /Applications/Hikidashi.app/Contents/Helpers/TaskMCP
+
+<em># Claude Desktop: claude_desktop_config.json</em>
+<b>{
+  "mcpServers": {
+    "hikidashi": {
+      "command": "/Applications/Hikidashi.app/Contents/Helpers/TaskMCP"
+    }
+  }
+}</b>
+
+<em># 共有 DB に届いているか確認</em>
+<span>$</span> /Applications/Hikidashi.app/Contents/Helpers/TaskMCP --check</pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="gp-footer">
+    <div><img src="assets/app-icon.png" alt="" width="512" height="512"><p>私の引き出し — デスクトップに、今日やることを。</p></div>
+    <nav class="gp-foot-links" aria-label="公開情報">
+      <a href="https://github.com/GpAraki/watashi-no-hikidashi/blob/main/README.md" target="_blank" rel="noopener" class="gp-foot-link">README</a>
+      <a href="https://github.com/GpAraki/watashi-no-hikidashi/blob/main/LICENSE" target="_blank" rel="noopener" class="gp-foot-link">ライセンス(MIT)</a>
+      <a href="https://github.com/GpAraki/watashi-no-hikidashi/issues" target="_blank" rel="noopener" class="gp-foot-link">不具合・要望</a>
+      <a href="https://github.com/GpAraki/watashi-no-hikidashi" target="_blank" rel="noopener" class="gp-foot-link"><span class="material-symbols-rounded" aria-hidden="true">code</span>GitHub<span class="material-symbols-rounded" aria-hidden="true">arrow_outward</span></a>
+    </nav>
+  </footer>
+</div>
+
+<script>
+  // latest.json を読んで、ダウンロードリンクとバージョン表示を最新リリースに合わせる。
+  fetch('latest.json', { cache: 'no-cache' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (feed) {
+      if (!feed || !feed.downloadUrl) return;
+      document.querySelectorAll('[data-download-link]').forEach(function (a) { a.href = feed.downloadUrl; });
+      document.querySelectorAll('[data-version]').forEach(function (el) { el.textContent = feed.version; });
+      var sha = document.querySelector('[data-sha256]');
+      if (sha && feed.sha256) sha.textContent = feed.sha256;
+    })
+    .catch(function () {});
+</script>
+</body>
+</html>
