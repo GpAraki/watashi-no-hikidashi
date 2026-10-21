@@ -55,6 +55,65 @@ final class TaskLinkTests: XCTestCase {
         XCTAssertThrowsError(try repo.removeLink(id: 999, actor: .user))
     }
 
+    func testFilterByLinkURLAndContains() throws {
+        let jira = try repo.createTask(NewTask(title: "Jira の課題"), actor: .user)
+        let github = try repo.createTask(NewTask(title: "GitHub の issue"), actor: .user)
+        let plain = try repo.createTask(NewTask(title: "リンクなし"), actor: .user)
+        try repo.addLink(taskId: jira.id, url: "https://example.atlassian.net/browse/PROJ-123", actor: .ai)
+        try repo.addLink(taskId: github.id, url: "https://github.com/GpAraki/watashi-no-hikidashi/issues/42", actor: .ai)
+        _ = plain
+
+        // 完全一致。前後の空白は無視する。
+        XCTAssertEqual(try repo.tasks(matching: TaskFilter(linkURL: " https://example.atlassian.net/browse/PROJ-123 ")).map(\.id), [jira.id])
+        XCTAssertTrue(try repo.tasks(matching: TaskFilter(linkURL: "https://example.atlassian.net/browse/PROJ-12")).isEmpty, "完全一致は前方一致にならない")
+
+        // 部分一致。大文字小文字は区別せず、LIKE のメタ文字はそのまま文字として扱う。
+        XCTAssertEqual(try repo.tasks(matching: TaskFilter(linkContains: "proj-123")).map(\.id), [jira.id])
+        XCTAssertEqual(try repo.tasks(matching: TaskFilter(linkContains: "watashi-no-hikidashi/issues/42")).map(\.id), [github.id])
+        XCTAssertEqual(try repo.tasks(matching: TaskFilter(linkContains: "atlassian.net/browse/")).map(\.id), [jira.id])
+        XCTAssertTrue(try repo.tasks(matching: TaskFilter(linkContains: "PROJ_123")).isEmpty, "_ はワイルドカードにならない")
+        XCTAssertTrue(try repo.tasks(matching: TaskFilter(linkContains: "%")).isEmpty, "% はワイルドカードにならない")
+
+        // 他の絞り込みと組み合わせられる。
+        try repo.completeTask(id: jira.id, actor: .user)
+        XCTAssertTrue(try repo.tasks(matching: TaskFilter(statuses: [.todo, .doing], linkContains: "PROJ-123")).isEmpty)
+        XCTAssertEqual(try repo.tasks(matching: TaskFilter(linkContains: "PROJ-123")).map(\.id), [jira.id])
+
+        // 外したリンクでは引けない。アーカイブ済みのタスクは既定で除外される。
+        let link = try XCTUnwrap(repo.links(taskId: github.id).first)
+        try repo.removeLink(id: link.id!, actor: .user)
+        XCTAssertTrue(try repo.tasks(matching: TaskFilter(linkContains: "issues/42")).isEmpty)
+        try repo.archiveTask(id: jira.id, actor: .user)
+        XCTAssertTrue(try repo.tasks(matching: TaskFilter(linkContains: "PROJ-123")).isEmpty)
+        XCTAssertEqual(try repo.tasks(matching: TaskFilter(linkContains: "PROJ-123", includeArchived: true)).map(\.id), [jira.id])
+    }
+
+    func testCreateTaskWithLinks() throws {
+        let task = try repo.createTask(NewTask(title: "課題から起こす", links: [
+            NewLink(url: "https://example.atlassian.net/browse/PROJ-7", label: "チケット"),
+            NewLink(url: " https://github.com/GpAraki/watashi-no-hikidashi/pull/9 "),
+            NewLink(url: "https://example.atlassian.net/browse/PROJ-7"),
+        ]), actor: .ai)
+
+        let links = try repo.links(taskId: task.id)
+        XCTAssertEqual(links.map(\.url.absoluteString), [
+            "https://example.atlassian.net/browse/PROJ-7",
+            "https://github.com/GpAraki/watashi-no-hikidashi/pull/9",
+        ], "同じ URL は 1 回だけ登録される")
+        XCTAssertEqual(links.map(\.displayLabel), ["チケット", "GitHub"])
+        XCTAssertEqual(links.map(\.createdBy), [.ai, .ai])
+        XCTAssertEqual(try repo.tasks(matching: TaskFilter(linkURL: "https://example.atlassian.net/browse/PROJ-7")).map(\.id), [task.id])
+
+        let actions = try repo.activity(taskId: task.id).map(\.action)
+        XCTAssertEqual(actions, [.link, .link, .create], "作成 1 件とリンク 2 件がログに残る")
+
+        // 不正な URL が混じっていればタスクごと作られない。
+        XCTAssertThrowsError(try repo.createTask(NewTask(title: "失敗する", links: [NewLink(url: "not a url")]), actor: .ai)) {
+            XCTAssertEqual($0 as? TaskRepositoryError, .invalidURL("not a url"))
+        }
+        XCTAssertTrue(try repo.tasks().filter { $0.title == "失敗する" }.isEmpty)
+    }
+
     func testServiceNames() {
         func name(_ s: String) -> String { TaskLink.serviceName(for: URL(string: s)!) }
         XCTAssertEqual(name("https://www.notion.so/x"), "Notion")
