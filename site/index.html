@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>私の引き出し — デスクトップに、今日やることを。</title>
+  <meta name="description" content="私の引き出しは、Mac のデスクトップウィジェットでタスクを見て、⌃⌥Space ですぐ入れて、進捗をコメントで積み上げ、Claude に MCP で整理を任せられる個人用タスク管理アプリです。データは Mac のローカルに置かれます。">
+  <meta name="theme-color" content="#213a7a">
+  <meta property="og:title" content="私の引き出し — デスクトップに、今日やることを。">
+  <meta property="og:description" content="ウィジェットで見て、すぐ入れて、日々積み上げ、Claude に任せる。Mac のための個人用タスク管理アプリ。">
+  <meta property="og:image" content="https://gparaki.github.io/watashi-no-hikidashi/assets/widgets-overview.png">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0&display=block">
+  <link rel="stylesheet" href="styles/site.css?v=20261025c">
+  <link rel="icon" href="assets/favicon.png" type="image/png">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a href="#top" class="brand" aria-label="私の引き出し トップへ"><img src="assets/app-icon.png" alt="" width="512" height="512"><span>私の引き出し</span></a>
+    <nav class="nav" aria-label="サイト内">
+      <a class="link" href="#capture">入れる</a>
+      <a class="link" href="#widget">見る</a>
+      <a class="link" href="#journal">積み上げる</a>
+      <a class="link" href="#claude">任せる</a>
+      <a class="btn btn-primary" href="https://github.com/GpAraki/watashi-no-hikidashi/releases/download/v0.2.0/Hikidashi-0.2.0.zip" data-download><span class="icon" aria-hidden="true">download</span>ダウンロード</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <!-- ヒーロー -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow"><span class="tag">v<span data-version>0.2.0</span></span>日報・浮かぶ入力パネル・Claude との連携が入りました</p>
+        <h1 id="hero-title">やることは、<br>デスクトップの<br><span class="accent">引き出し</span>に。</h1>
+        <p class="lede">ウィジェットで今日のタスクを見て、思いついたら <kbd>⌃</kbd><kbd>⌥</kbd><kbd>Space</kbd> ですぐ入れる。進んだことはコメントで日々積み上げ、整理は Claude に MCP で任せられる。Mac のための、個人用タスク管理アプリです。</p>
+        <div class="cta">
+          <a class="btn btn-primary btn-large" href="https://github.com/GpAraki/watashi-no-hikidashi/releases/download/v0.2.0/Hikidashi-0.2.0.zip" data-download>
+            <span class="row"><span class="icon" aria-hidden="true">download</span>macOS 版をダウンロード</span>
+            <small>v<span data-version>0.2.0</span> · Apple Silicon / Intel · 公証済み</small>
+          </a>
+          <a class="btn btn-ghost btn-large" href="https://github.com/GpAraki/watashi-no-hikidashi/releases" target="_blank" rel="noopener"><span class="icon" aria-hidden="true">new_releases</span>リリース一覧</a>
+        </div>
+        <ul class="facts" aria-label="特長">
+          <li><span class="icon" aria-hidden="true">check_circle</span>データは Mac のローカル</li>
+          <li><span class="icon" aria-hidden="true">check_circle</span>外部送信なし</li>
+          <li><span class="icon" aria-hidden="true">check_circle</span>macOS 14 以降</li>
+          <li><span class="icon" aria-hidden="true">check_circle</span>MIT ライセンス</li>
+        </ul>
+      </div>
+
+      <div class="scene" role="img" aria-label="Mac のデスクトップに私の引き出しのウィジェットが並び、その上に入力パネルが浮かんでいる様子">
+        <div class="menubar" aria-hidden="true">
+          <div class="left"><span></span><span>Finder</span><span>ファイル</span><span>編集</span></div>
+          <div class="right"><span class="tray"><span class="icon">inventory_2</span></span><span>10/25(日) 9:41</span></div>
+        </div>
+        <div class="w w-large"><img src="assets/widget-large.png" alt="" width="720" height="752"></div>
+        <div class="w w-small"><img src="assets/widget-small.png" alt="" width="340" height="340"></div>
+        <div class="w w-medium"><img src="assets/widget-medium.png" alt="" width="720" height="340"></div>
+        <div class="qe" aria-hidden="true">
+          <div class="line"><span class="icon">move_to_inbox</span><span>提案書のレビュー依頼を送る<span class="caret"></span></span></div>
+          <div class="chips">
+            <span class="chip on c-today"><span class="icon">light_mode</span>今日</span>
+            <span class="chip c-deadline"><span class="icon">event</span>期限あり</span>
+            <span class="chip c-sprint"><span class="icon">flag</span>スプリント</span>
+            <span class="chip c-open"><span class="icon">inbox</span>いつか</span>
+          </div>
+          <div class="hint"><span><span class="kbd">return</span> 追加</span><span><span class="kbd">esc</span> 閉じる</span><span><span class="kbd">⌘1〜4</span> タイプ</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- タイプ -->
+  <section class="section" aria-labelledby="types-title">
+    <div class="wrap">
+      <div class="head">
+        <p class="kicker">TASK TYPES</p>
+        <h2 id="types-title" class="h2">期限は、約束の強さで決まる。</h2>
+        <p class="sub">タスクには 4 つのタイプがあります。タイプを選ぶだけで期限が決まるので、日付を入れる手間も、並べ替えに迷う時間もいりません。</p>
+      </div>
+      <div class="types">
+        <article class="type c-today"><span class="badge icon" aria-hidden="true">light_mode</span><h3>今日</h3><p class="due">今日の終わりまで</p><p>今日中に終えること。ウィジェットのいちばん上に、進捗バーと一緒に出ます。</p></article>
+        <article class="type c-deadline"><span class="badge icon" aria-hidden="true">event</span><h3>期限あり</h3><p class="due">日付と時刻を指定</p><p>締め切りがあること。「あと 2 日」「期限切れ」のバッジで迫り具合が分かります。</p></article>
+        <article class="type c-sprint"><span class="badge icon" aria-hidden="true">flag</span><h3>スプリント</h3><p class="due">今のスプリントの最終日まで</p><p>今週中くらいに終えること。区切りは水曜開始の 1 週間が既定で、変えられます。</p></article>
+        <article class="type c-open"><span class="badge icon" aria-hidden="true">inbox</span><h3>いつか</h3><p class="due">期限なし</p><p>いつかやること。ウィジェットでは件数だけを控えめに出します。</p></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 入れる -->
+  <section id="capture" class="section alt" aria-labelledby="capture-title">
+    <div class="wrap">
+      <div class="head">
+        <p class="kicker"><span class="num">1</span>入れる</p>
+        <h2 id="capture-title" class="h2">思いついた、その場で。</h2>
+        <p class="sub">どのアプリを使っていても、手を止めずにタスクを入れられます。入れたタスクはすぐにウィジェットと一覧に現れます。</p>
+      </div>
+      <div class="capture">
+        <article class="card cap">
+          <h3>浮かぶ入力パネル</h3>
+          <p>どこからでも <span class="kbd">⌃</span><span class="kbd">⌥</span><span class="kbd">Space</span>。画面に入力パネルが浮かび、Return で追加して閉じます。作業中のアプリはそのまま。</p>
+          <div class="visual"><div class="keys" aria-label="Control、Option、Space"><span class="kbd">⌃</span><span class="kbd">⌥</span><span class="kbd">Space</span></div></div>
+        </article>
+        <article class="card cap">
+          <h3>一覧の上の入力欄</h3>
+          <p>一覧ウィンドウの上に、いつも入力欄があります。Return で続けて追加でき、右のピルでタイプを選べます。</p>
+          <div class="visual"><div class="inline-add"><span class="icon" aria-hidden="true">add_circle</span><span class="ph">週次定例のアジェンダを作る</span><span class="chip c-today" style="font-size:12px"><span class="icon">light_mode</span>今日</span></div></div>
+        </article>
+        <article class="card cap">
+          <h3>選んだ文字から</h3>
+          <p>メールやチャットの文字を選んで、右クリック →「引き出しにタスクを追加」。1 行目がタイトル、残りがメモ、URL はリンクになります。</p>
+          <div class="visual"><div class="ctx-menu" aria-hidden="true"><div>コピー</div><div>共有…</div><div class="hl">引き出しにタスクを追加</div></div></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 見る -->
+  <section id="widget" class="section" aria-labelledby="widget-title">
+    <div class="wrap">
+      <div class="head">
+        <p class="kicker"><span class="num">2</span>見る</p>
+        <h2 id="widget-title" class="h2">デスクトップで、次のタスクがわかる。</h2>
+        <p class="sub">ウィジェットは 3 サイズ。今日の進捗と期限をいつも見えるところに置いて、その場で完了チェックできます。</p>
+      </div>
+      <div class="desk">
+        <figure class="sm"><div class="wimg"><img src="assets/widget-small.png" alt="small ウィジェット。今日の進捗と次のタスク。" width="340" height="340" loading="lazy"></div><figcaption>Small<small>今日の進捗と次のタスク</small></figcaption></figure>
+        <figure class="md"><div class="wimg"><img src="assets/widget-medium.png" alt="medium ウィジェット。今日と近い期限のタスク。" width="720" height="340" loading="lazy"></div><figcaption>Medium<small>今日と近い期限のタスク</small></figcaption></figure>
+        <figure class="lg"><div class="wimg"><img src="assets/widget-large.png" alt="large ウィジェット。今日、期限あり、スプリントのセクション。" width="720" height="752" loading="lazy"></div><figcaption>Large<small>スプリントを含めた見通し</small></figcaption></figure>
+      </div>
+      <div class="points">
+        <div class="card point"><h3><span class="icon" aria-hidden="true">task_alt</span>丸で完了</h3><p>行の丸をクリックするとその場で完了。タイトルをクリックすると本体で開きます。</p></div>
+        <div class="card point"><h3><span class="icon" aria-hidden="true">bolt</span>すぐ反映</h3><p>本体や Claude が書き込むと、数百ミリ秒でウィジェットが描き直されます。</p></div>
+        <div class="card point"><h3><span class="icon" aria-hidden="true">link</span>リンクもそこから</h3><p>Notion や Jira のリンクが付いたタスクは、ウィジェットから直接開けます。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 積み上げる -->
+  <section id="journal" class="section alt" aria-labelledby="journal-title">
+    <div class="wrap grid-2">
+      <div>
+        <p class="kicker"><span class="num">3</span>積み上げる</p>
+        <h2 id="journal-title" class="h2">進んだことを、<br>日々のコメントに。</h2>
+        <p class="sub">タスクには、あなたも Claude もコメントを残せます。「日報」に切り替えると、全タスクのコメントと完了が日付ごとに並び、そのまま Markdown で日報や週報に貼れます。</p>
+        <ul class="facts" style="margin-top:22px">
+          <li><span class="icon" aria-hidden="true">check_circle</span>直近 7 / 14 / 30 日</li>
+          <li><span class="icon" aria-hidden="true">check_circle</span>日ごと・期間ごとに Markdown コピー</li>
+          <li><span class="icon" aria-hidden="true">check_circle</span>Claude も get_journal で読める</li>
+        </ul>
+      </div>
+      <div class="card journal" role="img" aria-label="日報の画面の見本。昨日の完了 1 件と、2 つのタスクへのコメントが日付ごとに並んでいる。">
+        <div class="bar" aria-hidden="true">
+          <span class="seg"><span>7 日</span><span class="on">14 日</span><span>30 日</span></span>
+          <span class="copy"><span class="icon">content_copy</span>期間をコピー</span>
+        </div>
+        <div class="day" aria-hidden="true">
+          <div class="day-h"><strong>今日</strong><small>10/25(日) · コメント 2</small><hr></div>
+          <div class="thread-t"><span class="icon">flag</span>オンボーディング資料を改訂する</div>
+          <div class="cmt c-ai"><span class="who"><span class="icon">auto_awesome</span>AI<time>10:15</time></span>用語集の下書き(18 語)を作成しました。確認をお願いします</div>
+          <div class="cmt c-user"><span class="who"><span class="icon">person</span>あなた<time>11:00</time></span>用語集はレビュー後に入れる。次は FAQ の更新</div>
+        </div>
+        <div class="day" aria-hidden="true">
+          <div class="day-h"><strong>昨日</strong><small>10/24(土) · 完了 1 · コメント 2</small><hr></div>
+          <div class="done-row"><span class="dot icon">check</span>月次レポートをまとめる</div>
+          <div class="cmt c-ai"><span class="who"><span class="icon">auto_awesome</span>AI<time>14:10</time></span>レビューコメント 3 件を反映し、表記ゆれを修正しました</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 任せる -->
+  <section id="claude" class="section dark-band" aria-labelledby="claude-title">
+    <div class="wrap grid-2">
+      <div>
+        <p class="kicker"><span class="num">4</span>任せる</p>
+        <h2 id="claude-title" class="h2">整理は、Claude に。<br>手綱は、あなたに。</h2>
+        <p class="sub">アプリの中に AI はいません。MCP サーバーとしてタスクの操作を公開し、Claude Code や Claude Desktop から呼び出します。Jira の課題を閉じたら対応するタスクも完了に、といった連携もできます。</p>
+        <div class="tools" aria-label="MCP のツール">
+          <code>list_tasks</code><code>create_task</code><code>update_task</code><code>complete_task</code><code>add_comment</code><code>get_journal</code><code>add_link</code><code>archive_task</code>
+        </div>
+      </div>
+      <div class="chat" role="img" aria-label="Claude に Jira の課題とタスクを揃えるよう頼み、Claude がタスクを完了してコメントを残し、Mac に通知が届く様子">
+        <div class="bubble me" aria-hidden="true">PROJ-142 を閉じたので、引き出しも揃えて、今日の進捗をコメントしておいて</div>
+        <div class="bubble claude" aria-hidden="true">
+          <div class="name"><span class="icon">auto_awesome</span>Claude</div>
+          <div class="tool"><span class="icon">check</span>list_tasks link_contains: "PROJ-142"</div>
+          <div class="tool"><span class="icon">check</span>complete_task 提案書のデザインを仕上げる</div>
+          <div class="tool"><span class="icon">check</span>add_comment「レビュー反映済みで提出、PROJ-142 をクローズ」</div>
+          タスクを完了にして、今日の進捗をコメントに残しました。
+        </div>
+        <div class="notif" aria-hidden="true">
+          <img src="assets/app-icon.png" alt="" width="512" height="512">
+          <div class="app"><span>私の引き出し</span><span>今</span></div>
+          <b>Claude が引き出しを更新しました</b>
+          <span>完了 1・コメント 1 — 提案書のデザインを仕上げる</span>
+        </div>
+      </div>
+    </div>
+    <div class="wrap">
+      <div class="ai-features">
+        <div class="ai-f"><h3><span class="icon" aria-hidden="true">notifications_active</span>決まった時刻に、ひと声</h3><p>平日の 9:30 と 17:30 など、決めた時刻に「タスクを見直しましょう」と通知。通知から更新用の指示をコピーして、Claude にそのまま貼れます。</p></div>
+        <div class="ai-f"><h3><span class="icon" aria-hidden="true">schedule</span>自動で更新(任意)</h3><p>同じ時刻に Claude Code を裏で動かし、Jira の状態を見てタスクを揃える設定も、コマンドひとつで登録できます。</p></div>
+        <div class="ai-f"><h3><span class="icon" aria-hidden="true">undo</span>ぜんぶ取り消せる</h3><p>Claude の変更は操作履歴に差分つきで残り、ワンクリックで戻せます。削除はすべて論理削除です。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ダウンロード -->
+  <section id="download" class="section" aria-labelledby="dl-title">
+    <div class="wrap">
+      <div class="head">
+        <p class="kicker">DOWNLOAD</p>
+        <h2 id="dl-title" class="h2">アプリケーションに置いて、開くだけ。</h2>
+      </div>
+      <div class="dl">
+        <div class="card dl-main">
+          <div class="dl-app">
+            <img src="assets/app-icon.png" alt="" width="512" height="512">
+            <div><h3>Hikidashi <span data-version>0.2.0</span></h3><p>公開 <span data-published>10/25(日)</span> · <a href="https://github.com/GpAraki/watashi-no-hikidashi/releases/tag/v0.2.0" data-notes style="color:var(--blue);font-weight:700">リリースノート</a></p></div>
+          </div>
+          <a class="btn btn-primary btn-large" href="https://github.com/GpAraki/watashi-no-hikidashi/releases/download/v0.2.0/Hikidashi-0.2.0.zip" data-download style="align-self:flex-start"><span class="icon" aria-hidden="true">download</span>Hikidashi <span data-version>0.2.0</span> をダウンロード</a>
+          <ul class="spec">
+            <li><span class="icon" aria-hidden="true">laptop_mac</span>macOS 14 Sonoma 以降</li>
+            <li><span class="icon" aria-hidden="true">memory</span>Apple Silicon / Intel</li>
+            <li><span class="icon" aria-hidden="true">verified_user</span>Developer ID 署名・公証済み</li>
+            <li><span class="icon" aria-hidden="true">database</span>データはローカルの SQLite</li>
+          </ul>
+          <p class="sha">SHA-256: <code data-sha256>3649731013b09e80b288a1b0b0c2863233b678ef58badc63f828722df3fecd67</code></p>
+        </div>
+        <div class="card steps">
+          <h3>はじめかた</h3>
+          <ol>
+            <li><span>zip を開き、<b>Hikidashi.app を「アプリケーション」フォルダへ移動</b>してから開く</span></li>
+            <li><span>メニューバーにトレイのアイコンが出たら準備完了。⌃⌥Space で最初のタスクを入れる</span></li>
+            <li><span>デスクトップを右クリック →「ウィジェットを編集」→「私の引き出し」を置く</span></li>
+            <li><span>メニューバーの「Claude と連携…」から、Claude Code / Claude Desktop の設定をコピーして登録する</span></li>
+          </ol>
+          <div class="note"><span class="icon" aria-hidden="true">warning</span><span>ダウンロードフォルダのまま開くと、macOS がアプリを一時的な場所に移して起動するため、Claude からつながりません。必ず「アプリケーション」へ移してから開いてください。</span></div>
+          <div class="term" aria-label="Claude Code に登録するコマンド">
+            <div class="tb"><i></i><i></i><i></i><span>Claude Code に登録</span></div>
+            <pre><span class="p">$</span> claude mcp add --scope user hikidashi -- \
+    /Applications/Hikidashi.app/Contents/Helpers/TaskMCP</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <a href="#top" class="brand" style="font-size:14px"><img src="assets/app-icon.png" alt="" width="512" height="512" style="width:24px;height:24px;border-radius:6px">私の引き出し</a>
+    <nav aria-label="関連リンク">
+      <a href="https://github.com/GpAraki/watashi-no-hikidashi/releases" target="_blank" rel="noopener">リリース</a>
+      <a href="https://github.com/GpAraki/watashi-no-hikidashi#readme" target="_blank" rel="noopener">使い方</a>
+      <a href="https://github.com/GpAraki/watashi-no-hikidashi/issues" target="_blank" rel="noopener">不具合・要望</a>
+      <a href="https://github.com/GpAraki/watashi-no-hikidashi/blob/main/LICENSE" target="_blank" rel="noopener">MIT ライセンス</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  // latest.json を読んで、ダウンロードリンク・バージョン・公開日・SHA-256 を最新リリースに合わせる。
+  (function () {
+    var week = ['日', '月', '火', '水', '木', '金', '土'];
+    fetch('latest.json', { cache: 'no-cache' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (feed) {
+        if (!feed || !feed.downloadUrl) return;
+        document.querySelectorAll('[data-download]').forEach(function (a) { a.href = feed.downloadUrl; });
+        document.querySelectorAll('[data-version]').forEach(function (el) { el.textContent = feed.version; });
+        document.querySelectorAll('[data-notes]').forEach(function (a) { a.href = feed.releaseNotesUrl; });
+        var sha = document.querySelector('[data-sha256]');
+        if (sha && feed.sha256) sha.textContent = feed.sha256;
+        var d = new Date(feed.publishedAt);
+        if (!isNaN(d)) {
+          var label = (d.getMonth() + 1) + '/' + d.getDate() + '(' + week[d.getDay()] + ')';
+          document.querySelectorAll('[data-published]').forEach(function (el) { el.textContent = label; });
+        }
+      })
+      .catch(function () {});
+  })();
+</script>
+</body>
+</html>
