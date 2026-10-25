@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Outfit:wght@500;600&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0&display=block">
-  <link rel="stylesheet" href="styles/site.css?v=20261025d">
+  <link rel="stylesheet" href="styles/site.css?v=20261025e">
   <link rel="icon" href="assets/favicon.png" type="image/png">
 </head>
 <body>
@@ -83,13 +83,13 @@
       <div class="intro-copy">
         <h2 id="intro-title" class="sr-only">コンセプト</h2>
         <p class="lines">
-          <span>やることは、人によっても、日によっても違う。</span>
-          <span>だから、見えるところに置いておく。</span>
-          <span>ウィジェットで今日のタスクを眺めて、</span>
+          <span>今日やることを、デスクトップに置いておく。</span>
+          <span>ウィジェットで眺めて、</span>
           <span>思いついたら <kbd>⌃</kbd><kbd>⌥</kbd><kbd>Space</kbd> ですぐ入れる。</span>
-          <span>進んだことはコメントで日々積み上げ、</span>
+          <span>進んだことはコメントに書き足して、</span>
+          <span>日報にまとめる。</span>
           <span>整理は Claude に MCP で任せられる。</span>
-          <span>データは Mac のローカルに。外には出しません。</span>
+          <span>データは Mac の中だけ。外には送りません。</span>
         </p>
         <div class="logo-lockup">
           <small>Mac のための個人用タスク管理</small>
@@ -125,7 +125,7 @@
     </div>
 
     <div class="panels">
-      <article class="panel p-blue" aria-labelledby="p1-title">
+      <article class="panel p-blue panel-light" aria-labelledby="p1-title">
         <div class="blob p-blob" aria-hidden="true"></div>
         <div class="wrap panel-grid">
           <div class="tile">
@@ -144,13 +144,13 @@
           </div>
           <div class="panel-copy">
             <p class="num">01</p>
-            <h3 id="p1-title">思いついた、その場で<br>タスクを入れる</h3>
+            <h3 id="p1-title">思いついたら、<br>その場で入れる</h3>
             <p>どのアプリを使っていても、<kbd>⌃</kbd><kbd>⌥</kbd><kbd>Space</kbd> で入力パネルが浮かび、Return で追加して閉じます。作業中のアプリはそのまま。メールやチャットの文字を選んで右クリック →「引き出しにタスクを追加」でも入れられます。1 行目がタイトル、残りがメモ、URL はリンクになります。</p>
           </div>
         </div>
       </article>
 
-      <article class="panel p-sky" aria-labelledby="p2-title">
+      <article class="panel p-sky panel-flip" aria-labelledby="p2-title">
         <div class="blob p-blob" aria-hidden="true"></div>
         <div class="wrap panel-grid">
           <div class="tile tile-widgets">
@@ -165,7 +165,7 @@
         </div>
       </article>
 
-      <article class="panel p-orange" aria-labelledby="p3-title">
+      <article class="panel p-orange panel-light" aria-labelledby="p3-title">
         <div class="blob p-blob" aria-hidden="true"></div>
         <div class="wrap panel-grid">
           <div class="tile">
@@ -189,13 +189,13 @@
           </div>
           <div class="panel-copy">
             <p class="num">03</p>
-            <h3 id="p3-title">進んだことを<br>日々のコメントに積み上げる</h3>
+            <h3 id="p3-title">進んだことを<br>コメントで積み上げる</h3>
             <p>タスクには、あなたも Claude もコメントを残せます。「日報」に切り替えると、全タスクのコメントと完了が日付ごとに並び、直近 7 / 14 / 30 日を Markdown でコピーして、そのまま日報や週報に貼れます。</p>
           </div>
         </div>
       </article>
 
-      <article class="panel p-purple" aria-labelledby="p4-title">
+      <article class="panel p-purple panel-flip" aria-labelledby="p4-title">
         <div class="blob p-blob" aria-hidden="true"></div>
         <div class="wrap panel-grid">
           <div class="tile">
@@ -218,8 +218,8 @@
           </div>
           <div class="panel-copy">
             <p class="num">04</p>
-            <h3 id="p4-title">整理は Claude に、<br>手綱はあなたに</h3>
-            <p>アプリの中に AI はいません。MCP サーバーとしてタスクの操作を公開し、Claude Code や Claude Desktop から呼び出します。Jira の課題を閉じたら対応するタスクも完了に、といった連携もできます。Claude の変更は操作履歴に差分つきで残り、ワンクリックで戻せます。</p>
+            <h3 id="p4-title">整理は Claude に。<br>決めるのは、自分で。</h3>
+            <p>アプリの中に AI はいません。MCP サーバーとしてタスクの操作を公開し、Claude Code や Claude Desktop から呼び出します。Jira の課題を閉じたら対応するタスクも完了に、といった連携もできます。Claude が変えたところは操作履歴に差分つきで残るので、気に入らなければワンクリックで戻せます。</p>
             <div class="tools" aria-label="MCP のツール">
               <code>list_tasks</code><code>create_task</code><code>update_task</code><code>complete_task</code><code>add_comment</code><code>get_journal</code><code>add_link</code><code>archive_task</code>
             </div>
@@ -235,7 +235,7 @@
       <div class="sec-head">
         <h2 id="types-title">4 つのタイプ</h2>
         <p class="en">Task types</p>
-        <p class="lead">期限は、約束の強さで決まる。タイプを選ぶだけで期限が決まるので、日付を入れる手間も、並べ替えに迷う時間もいりません。</p>
+        <p class="lead">タスクには 4 つのタイプがあり、選ぶと期限が決まります。毎回日付を入れなくてよく、何から手をつけるかは並び順を見ればわかります。</p>
       </div>
       <div class="cards4">
         <article class="tcard c-today"><div class="tvis"><span class="badge icon" aria-hidden="true">light_mode</span></div><p class="label">Type 1</p><h3>今日</h3><p class="due">今日の終わりまで</p><p>今日中に終えること。ウィジェットのいちばん上に、進捗バーと一緒に出ます。</p></article>
@@ -257,10 +257,10 @@
       <div class="bubbles">
         <article class="sb c-today"><span class="icon" aria-hidden="true">task_alt</span><h3>丸で完了</h3><p>ウィジェットの行の丸をクリックするとその場で完了。タイトルをクリックすると本体で開きます。</p></article>
         <article class="sb c-sky"><span class="icon" aria-hidden="true">bolt</span><h3>すぐ反映</h3><p>本体や Claude が書き込むと、数百ミリ秒でウィジェットが描き直されます。</p></article>
-        <article class="sb c-deadline"><span class="icon" aria-hidden="true">link</span><h3>リンクもそこから</h3><p>Notion や Jira のリンクが付いたタスクは、ウィジェットから直接開けます。</p></article>
-        <article class="sb c-sprint"><span class="icon" aria-hidden="true">notifications_active</span><h3>決まった時刻に、ひと声</h3><p>平日の 9:30 と 17:30 など、決めた時刻に「タスクを見直しましょう」と通知。更新用の指示をコピーして Claude に貼れます。</p></article>
+        <article class="sb c-deadline"><span class="icon" aria-hidden="true">link</span><h3>リンクもウィジェットから</h3><p>Notion や Jira のリンクが付いたタスクは、ウィジェットから直接開けます。</p></article>
+        <article class="sb c-sprint"><span class="icon" aria-hidden="true">notifications_active</span><h3>決まった時刻に通知</h3><p>平日の 9:30 と 17:30 など、決めた時刻に「タスクを見直しましょう」と通知します。通知から更新用の指示をコピーして、Claude に貼れます。</p></article>
         <article class="sb c-today"><span class="icon" aria-hidden="true">schedule</span><h3>自動で更新(任意)</h3><p>同じ時刻に Claude Code を裏で動かし、Jira の状態を見てタスクを揃える設定も、コマンドひとつで登録できます。</p></article>
-        <article class="sb c-sprint"><span class="icon" aria-hidden="true">undo</span><h3>ぜんぶ取り消せる</h3><p>Claude の変更は操作履歴に差分つきで残り、ワンクリックで戻せます。削除はすべて論理削除です。</p></article>
+        <article class="sb c-sprint"><span class="icon" aria-hidden="true">undo</span><h3>あとから取り消せる</h3><p>Claude の変更は操作履歴に差分つきで残り、ワンクリックで戻せます。削除は論理削除なので、消えてなくなることはありません。</p></article>
       </div>
     </div>
   </section>
@@ -354,8 +354,8 @@
     <div class="blob b-dl-3" aria-hidden="true"></div>
     <div class="wrap dl-grid">
       <div class="dl-copy">
-        <h2 id="dl-title">さあ、引き出しを<br>開けてみよう。</h2>
-        <p>アプリケーションに置いて、開くだけ。<br>今日のタスクが、デスクトップに並びます。</p>
+        <h2 id="dl-title">アプリケーションに置いて、<br>開くだけ。</h2>
+        <p>今日のタスクが、デスクトップに並びます。<br>Claude との連携は、あとからでも。</p>
         <a class="pill pill-primary pill-lg" href="https://github.com/GpAraki/watashi-no-hikidashi/releases/download/v0.2.0/Hikidashi-0.2.0.zip" data-download><span class="icon" aria-hidden="true">download</span>Hikidashi <span data-version>0.2.0</span> をダウンロード<span class="arrow" aria-hidden="true"><span class="icon">arrow_forward</span></span></a>
         <ul class="spec">
           <li><span class="icon" aria-hidden="true">laptop_mac</span>macOS 14 Sonoma 以降</li>
