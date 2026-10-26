@@ -1,8 +1,8 @@
 {
-  "version": "0.3.1",
-  "publishedAt": "2026-10-26T00:56:53Z",
-  "downloadUrl": "https://github.com/GpAraki/watashi-no-hikidashi/releases/download/v0.3.1/Hikidashi-0.3.1.zip",
-  "sha256": "8be54ff9546f6112ad131763a94bead313f27acb850ed12f594ad707b9dc38b3",
+  "version": "0.4.0",
+  "publishedAt": "2026-10-26T11:47:28Z",
+  "downloadUrl": "https://github.com/GpAraki/watashi-no-hikidashi/releases/download/v0.4.0/Hikidashi-0.4.0.zip",
+  "sha256": "e9053de120b20a6faf7c48085ea173d7894e69041659d87cbd582688b85918d9",
   "minimumOs": "14.0",
-  "releaseNotesUrl": "https://github.com/GpAraki/watashi-no-hikidashi/releases/tag/v0.3.1"
+  "releaseNotesUrl": "https://github.com/GpAraki/watashi-no-hikidashi/releases/tag/v0.4.0"
 }

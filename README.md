@@ -2,7 +2,7 @@
 
 A macOS task manager that lives on your desktop. View tasks in a widget, and let AI manage them via MCP.
 
-Mac のデスクトップウィジェットでタスクを見て、⌃⌥Space ですぐ入れて、進捗をコメントで積み上げ、Claude に MCP で整理を任せられる個人用タスク管理アプリです。データは Mac のローカル(SQLite)に置かれ、外部には送信しません。
+Mac のデスクトップウィジェットでタスクを見て、⌃⌥Space ですぐ入れて、進捗をコメントで積み上げ、覚えておくことはメモに残し、Claude や Codex に MCP で整理を任せられる個人用タスク管理アプリです。データは Mac のローカル(SQLite)に置かれ、外部には送信しません。
 
 **ダウンロードと紹介**: https://gparaki.github.io/watashi-no-hikidashi/
 
@@ -17,7 +17,7 @@ Mac のデスクトップウィジェットでタスクを見て、⌃⌥Space �
 ## インストール
 
 1. [Releases](https://github.com/GpAraki/watashi-no-hikidashi/releases) から `Hikidashi-<バージョン>.zip` をダウンロードする
-2. zip を開き、`Hikidashi.app` を「アプリケーション」フォルダへ移動してから開く(ダウンロードフォルダのまま開くと、macOS が一時的な場所で起動するため Claude からつながりません)
+2. zip を開き、`Hikidashi.app` を「アプリケーション」フォルダへ移動してから開く(ダウンロードフォルダのまま開くと、macOS が一時的な場所で起動するため AI からつながりません)
 3. メニューバーにトレイのアイコンが出たら準備完了
 4. デスクトップを右クリック →「ウィジェットを編集」→「私の引き出し」を置く
 
@@ -27,9 +27,9 @@ Mac のデスクトップウィジェットでタスクを見て、⌃⌥Space �
 pluginkit -a /Applications/Hikidashi.app/Contents/PlugIns/TaskWidget.appex && killall chronod
 ```
 
-## Claude につなぐ
+## AI につなぐ
 
-メニューバーの「Claude と連携…」(⌘,)を開くと、Claude Code のコマンドと Claude Desktop の設定をそのままコピーできます。手で設定する場合は次のとおりです。
+メニューバーの「AI と連携…」(⌘,)を開くと、Claude Code のコマンド、Claude Desktop と Codex の設定をそのままコピーできます。手で設定する場合は次のとおりです。
 
 ```bash
 # Claude Code(user スコープ)
@@ -48,6 +48,17 @@ claude mcp add --scope user hikidashi -- /Applications/Hikidashi.app/Contents/He
 
 Claude Desktop は `~/Library/Application Support/Claude/claude_desktop_config.json` に追加して再起動します。
 
+```bash
+# Codex(CLI)
+codex mcp add hikidashi -- /Applications/Hikidashi.app/Contents/Helpers/TaskMCP
+```
+
+```toml
+# Codex アプリ・CLI 共通の ~/.codex/config.toml
+[mcp_servers.hikidashi]
+command = "/Applications/Hikidashi.app/Contents/Helpers/TaskMCP"
+```
+
 | ツール | 内容 |
 | --- | --- |
 | `list_tasks` | 状態・タイプ・期限・優先度・リンク URL で絞り込んで一覧する |
@@ -57,8 +68,11 @@ Claude Desktop は `~/Library/Application Support/Claude/claude_desktop_config.j
 | `get_journal` | 日ごとのコメントと完了(日報)を返す |
 | `add_link` / `remove_link` | Notion や Jira などのリンクを付ける / 外す |
 | `list_projects` | プロジェクト一覧 |
+| `list_memos` / `create_memo` | メモを一覧する(本文の部分一致・ピン留めで絞り込み) / 追加する |
+| `update_memo` / `append_memo` | メモを書き換える・ピン留めを切り替える / 末尾に追記する |
+| `archive_memo` | メモを論理削除する |
 
-Claude の変更はすべて操作履歴に残り、アプリから取り消せます。
+AI の変更はすべて操作履歴に残り、アプリから取り消せます。
 
 ## 主な機能
 
@@ -67,8 +81,10 @@ Claude の変更はすべて操作履歴に残り、アプリから取り消せ�
 - **音声入力**: 入力パネルとコメント欄のマイクのボタンで、話して入れる。認識は Mac の中だけで行い、音声は外部に送らない
 - **タイプ**: 今日 / 期限あり / スプリント / いつか。タイプから期限が決まる
 - **日報**: 全タスクのコメントと完了を日付ごとに並べ、Markdown でコピー
-- **通知**: 決まった時刻のリマインダーと、Claude が更新したときのお知らせ。定時に Claude Code で自動更新する設定も可能
-- **URL スキーム**: `hikidashi://add`(入力パネル)、`hikidashi://tasks`(一覧)、`hikidashi://integration`(Claude と連携)
+- **メモ**: タスクとは別に覚えておくことを残す。1 行目が見出し。ピン留めしたメモはウィジェットに出せる
+- **「#調べる」**: メモに URL と「#調べる」を書くと、AI が中身を読んで要点を追記し「#調べ済み」を付ける
+- **通知**: 決まった時刻のリマインダーと、AI が更新したときのお知らせ。定時に Claude Code か Codex で自動更新する設定も可能
+- **URL スキーム**: `hikidashi://add`(入力パネル)、`hikidashi://tasks`(一覧)、`hikidashi://integration`(AI と連携)、`hikidashi://memos`(メモ)
 
 ## 不具合・要望
 
