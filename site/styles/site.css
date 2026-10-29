@@ -389,6 +389,23 @@ kbd, .kbd {
 
 /* ---------- レスポンシブ ---------- */
 /* 高さの低い画面では、重なるパネルの図版を画面の高さに合わせて縮める。 */
+/* ---------- ショートカット ---------- */
+.keys-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.keys-group { --c: var(--blue); border-radius: var(--radius); background: #fff; box-shadow: var(--shadow-sm); padding: 24px 24px 14px; }
+.keys-group.c-today { --c: var(--today); }
+.keys-group.c-sky { --c: var(--sky); }
+.keys-group.c-sprint { --c: var(--sprint); }
+.keys-group h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 16px; letter-spacing: .04em; color: var(--c); }
+.keys-group h3 .icon { font-size: 20px; }
+.keys-group dl { margin: 0; }
+.keys-group dl > div { display: grid; grid-template-columns: minmax(118px, auto) 1fr; gap: 14px; align-items: start; padding: 11px 0; border-top: 1px solid var(--line); }
+.keys-group dt { margin: 0; font-size: 14px; white-space: nowrap; line-height: 1.6; }
+.keys-group dt kbd { font-size: 12.5px; }
+.keys-group dt .ctx { font-size: 12.5px; font-weight: 700; color: var(--ink); white-space: normal; }
+.keys-group dd { margin: 0; font-size: 13.5px; line-height: 1.8; color: var(--ink-2); }
+.keys-note { margin: 24px 0 0; font-size: 13.5px; line-height: 1.9; color: var(--ink-2); overflow-wrap: anywhere; }
+.keys-note code { font-family: var(--mono); font-size: 12px; background: #fff; padding: 2px 6px; border-radius: 6px; }
+
 @media (min-width: 981px) and (max-height: 820px) {
   .panel { padding: 28px 0; }
   .tile { width: auto; height: calc(100vh - var(--header-h) - 88px - 56px); max-width: 100%; margin-inline: auto; }
@@ -417,7 +434,9 @@ kbd, .kbd {
   .wrap { width: min(var(--max), 100% - 32px); }
   .hero h1 { font-size: clamp(32px, 9.4vw, 40px); letter-spacing: .06em; }
   .cta .pill { width: 100%; justify-content: space-between; }
-  .cards4, .steps4, .bubbles { grid-template-columns: 1fr; }
+  .cards4, .steps4, .bubbles, .keys-grid { grid-template-columns: 1fr; }
+  .keys-group dl > div { grid-template-columns: 1fr; gap: 4px; }
+  .keys-group dt { white-space: normal; }
   .sec-head { grid-template-columns: 1fr; grid-template-areas: "h" "en" "lead" "pill"; }
   .sec-head .pill { justify-self: start; margin-top: 16px; }
   .spec { grid-template-columns: 1fr; }
