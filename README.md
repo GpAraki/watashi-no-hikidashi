@@ -16,12 +16,12 @@ Mac のデスクトップウィジェットでタスクを見て、⌃⌥Space �
 
 ## インストール
 
-1. [Releases](https://github.com/GpAraki/watashi-no-hikidashi/releases) から `Hikidashi-<バージョン>.zip` をダウンロードする
-2. zip を開き、`Hikidashi.app` を「アプリケーション」フォルダへ移動してから開く(ダウンロードフォルダのまま開くと、macOS が一時的な場所で起動するため AI からつながりません)
+1. [Releases](https://github.com/GpAraki/watashi-no-hikidashi/releases) から `Hikidashi-<バージョン>.dmg` をダウンロードする
+2. DMG を開き、表示されたウィンドウで `Hikidashi.app` を右の「アプリケーション」へドラッグしてから、「アプリケーション」の中のものを開く(ダウンロードフォルダのまま開くと、macOS が一時的な場所で起動するため AI からつながりません)
 3. メニューバーにトレイのアイコンが出たら準備完了
 4. デスクトップを右クリック →「ウィジェットを編集」→「私の引き出し」を置く
 
-0.6.0 からは、新しいバージョンが出るとアプリがメニューバーで知らせます。アップデートは `Hikidashi.app` を入れ替えて起動するだけです。データは引き継がれます。入れ替えたあとウィジェットが空のままのときは、次で復帰します。
+0.6.0 からは、新しいバージョンが出るとアプリがメニューバーで知らせます。アップデートは新しい DMG を開き、`Hikidashi.app` を「アプリケーション」へドラッグして入れ替え、起動するだけです。データは引き継がれます。入れ替えたあとウィジェットが空のままのときは、次で復帰します。
 
 ```bash
 pluginkit -a /Applications/Hikidashi.app/Contents/PlugIns/TaskWidget.appex && killall chronod

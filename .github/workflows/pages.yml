@@ -60,7 +60,7 @@ jobs:
                   raise SystemExit(f"{key} must point to the official GitHub Releases")
 
           tag = f"v{version}"
-          if feed["downloadUrl"] != f"https://github.com/{repo}/releases/download/{tag}/Hikidashi-{version}.zip":
+          if feed["downloadUrl"] != f"https://github.com/{repo}/releases/download/{tag}/Hikidashi-{version}.dmg":
               raise SystemExit("downloadUrl does not match version")
           if feed["releaseNotesUrl"] != f"https://github.com/{repo}/releases/tag/{tag}":
               raise SystemExit("releaseNotesUrl does not match version")
